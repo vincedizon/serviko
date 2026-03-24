@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { BookingService, Booking } from '../../core/services/booking.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 
 @Component({
   selector: 'app-bookings',

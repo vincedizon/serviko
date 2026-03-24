@@ -10,7 +10,7 @@ router.get('/', async (req, res) => {
 
     let query = {};
 
-    if (category)  query.category  = category;
+    if (category)  query.service  = category;
     if (verified === 'true') query.verified = true;
     if (status)    query.status = status;
     if (minRating) query.rating = { $gte: parseFloat(minRating) };
@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
     if (search) {
       query.$or = [
         { providerName: { $regex: search, $options: 'i' } },
-        { category:     { $regex: search, $options: 'i' } },
+        { service:     { $regex: search, $options: 'i' } },
         { title:        { $regex: search, $options: 'i' } },
       ];
     }
@@ -41,7 +41,7 @@ router.get('/', async (req, res) => {
 router.get('/categories', async (req, res) => {
   try {
     const counts = await Listing.aggregate([
-      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $group: { _id: '$service', count: { $sum: 1 } } },
       { $sort:  { count: -1 } }
     ]);
     res.json({ success: true, data: counts });
