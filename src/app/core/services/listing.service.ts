@@ -57,9 +57,8 @@ export class ListingService {
 
   /** Get a single listing by ID */
   getListingById(id: string): Observable<{ success: boolean; data: Listing }> {
-    return this.http.get<{ success: boolean; data: Listing }>(`${this.apiUrl}/listings/${id}`);
-  }
-
+  return this.http.get<{ success: boolean; data: Listing }>(`${this.apiUrl}/listings/${id}`); 
+}
   /** Create a new listing (providers only) */
   createListing(data: Partial<Listing>): Observable<{ success: boolean; data: Listing }> {
     return this.http.post<{ success: boolean; data: Listing }>(`${this.apiUrl}/listings`, data);

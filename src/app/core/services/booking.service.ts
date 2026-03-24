@@ -1,97 +1,58 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { Observable } from 'rxjs';
 
-// ── Booking model used by BookingsComponent ──────────────────────────────────
+// 1. DEFINE THE INTERFACE FIRST (Above the class)
 export interface Booking {
-  _id:       string;
-  id?:       string;
-  ref?:      string;
-  service:   string;
-  provider:  string;
-  date:      string;
-  time?:     string;
-  address?:  string;
-  amount:    number | string;
-  status:    'Pending' | 'Active' | 'Completed' | 'Cancelled';
-  rated?:    boolean;
+  _id: string;
+  ref?: string;
+  userId: string;
+  listingId?: string;
+  service: string;
+  provider: string;
+  providerId?: string;
+  description?: string;
+  address?: string;
+  city: string;
+  duration?: string;
+  date: Date | string;
+  time?: string;
+  urgency?: string;
+  contactName?: string;
+  phone?: string;
+  notes?: string;
+  amount: number;
+  status: 'Pending' | 'Active' | 'Completed' | 'Cancelled';
+  rated: boolean;
 }
 
-// ── Payload for creating a new booking ───────────────────────────────────────
-export interface BookingPayload {
-  providerId:    string;
-  serviceId:     string;
-  scheduledDate: string;
-  scheduledTime: string;
-  address:       string;
-  notes?:        string;
-  paymentMethod: 'gcash' | 'maya' | 'bank' | 'cash';
-}
-
-// ── API response shape after creating a booking ──────────────────────────────
-export interface BookingResponse {
-  success: boolean;
-  data:    any;
-  _id:     string;   // MongoDB ObjectId — used by PaymentComponent
-  ref:     string;   // Human-readable SK-XXXXX — displayed on receipt
-}
-
+// 2. NOW THE CLASS CAN USE THAT NAME
 @Injectable({ providedIn: 'root' })
 export class BookingService {
-  private readonly apiUrl = `${environment.apiUrl}/api/bookings`;
+  private baseUrl = 'http://localhost:3000/api/bookings';
 
-  // ── Confirmed booking state (set after wizard, read by PaymentComponent) ───
-  private _confirmedId  = signal<string | null>(null);
-  private _confirmedRef = signal<string | null>(null);
-
-  readonly confirmedId  = this._confirmedId.asReadonly();
-  readonly confirmedRef = this._confirmedRef.asReadonly();
+  confirmedId = signal<string | null>(null);
+  confirmedRef = signal<string | null>(null);
+  cities = ['Angeles City', 'Mabalacat', 'San Fernando', 'Mexico', 'Porac'];
 
   constructor(private http: HttpClient) {}
 
-  // Call at end of booking wizard before navigating to /payment
-  setConfirmedBooking(id: string, ref: string): void {
-    this._confirmedId.set(id);
-    this._confirmedRef.set(ref);
+  // If your API returns { data: Booking[] }, use Observable<any>
+  // If your API returns just the array [Booking, Booking], use Observable<Booking[]>
+  getMyBookings(): Observable<any> {
+    return this.http.get<any>(`${this.baseUrl}/my-bookings`);
   }
 
-  clearConfirmedBooking(): void {
-    this._confirmedId.set(null);
-    this._confirmedRef.set(null);
+  submitRating(id: string, rating: number, comment: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/rate/${id}`, { rating, comment });
   }
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────
-
-  createBooking(payload: BookingPayload) {
-    return this.http.post<BookingResponse>(this.apiUrl, payload);
+  cancelBooking(id: string): Observable<any> {
+    return this.http.patch(`${this.baseUrl}/cancel/${id}`, {});
   }
 
-  // Used by BookingsComponent
-  getMyBookings() {
-    return this.http.get<{ success: boolean; data: Booking[] }>(this.apiUrl);
-  }
-
-  getBookings() {
-    return this.http.get<{ success: boolean; data: Booking[] }>(this.apiUrl);
-  }
-
-  getBookingById(id: string) {
-    return this.http.get<{ success: boolean; data: Booking }>(`${this.apiUrl}/${id}`);
-  }
-
-  updateBookingStatus(id: string, status: string) {
-    return this.http.patch(`${this.apiUrl}/${id}/status`, { status });
-  }
-
-  cancelBooking(id: string) {
-    return this.http.patch(`${this.apiUrl}/${id}/status`, { status: 'Cancelled' });
-  }
-
-  submitRating(bookingId: string, rating: number, comment: string) {
-    return this.http.post(`${environment.apiUrl}/api/ratings`, {
-      bookingId,
-      rating,
-      comment,
-    });
+  clearConfirmedBooking() {
+    this.confirmedId.set(null);
+    this.confirmedRef.set(null);
   }
 }
