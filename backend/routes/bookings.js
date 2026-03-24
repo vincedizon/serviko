@@ -46,10 +46,9 @@ router.post('/', protect, async (req, res) => {
 router.get('/my-bookings', protect, async (req, res) => {
   try {
     const bookings = await Booking.find({ userId: req.user.id })
-      .populate('providerId', 'name avatar')
+      .populate('providerId', 'name')
       .populate('serviceId', 'title price')
       .sort({ createdAt: -1 });
-
     res.json({ success: true, data: bookings });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -58,7 +57,7 @@ router.get('/my-bookings', protect, async (req, res) => {
 
 // GET /api/bookings/:id — get a SINGLE booking by its MongoDB _id
 // BUG FIX: was using Booking.find({ userId }) instead of Booking.findById(req.params.id)
-router.get('/my-bookings', protect, async (req, res) => {
+router.get('/:id', protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('providerId', 'name avatar')

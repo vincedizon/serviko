@@ -33,18 +33,18 @@ export class BookingComponent implements OnInit {
 
   // 3. Methods for loading and filtering data
   loadBookings() {
-    this.isLoading.set(true);
-    this.bookingService.getMyBookings().subscribe({
-      next: (res: any) => {
-        // Adjust based on your API response structure (e.g., res.data)
-        this.bookings.set(res.data || res); 
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        this.errorMsg.set('Failed to load bookings. Please try again.');
-        this.isLoading.set(false);
-      }
-    });
+  this.isLoading.set(true);
+  this.bookingService.getMyBookings().subscribe({
+    next: (res: any) => {
+      // res is { success: true, data: [...] }
+      this.bookings.set(res.data || []); 
+      this.isLoading.set(false);
+    },
+    error: (err) => {
+      this.errorMsg.set('Server connection failed.');
+      this.isLoading.set(false);
+    }
+  });
   }
 
   // Computed signal for the dashboard stats section
