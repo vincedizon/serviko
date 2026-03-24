@@ -1,88 +1,107 @@
-import { Component, signal } from '@angular/core';
-import { CommonModule }      from '@angular/common';
-import { FormsModule }       from '@angular/forms';
-import { Router }            from '@angular/router';
-import { BookingService }    from '../../core/services/booking.service';
-import { PaymentService }    from '../../core/services/payment.service';
+import { Component, OnInit, signal } from '@angular/core';
+import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { BookingService } from '../../core/services/booking.service';
+import { environment } from '../../../environments/environment';
+
+export interface PaymentPayload {
+  bookingId: string;
+  method:    'gcash' | 'maya' | 'bank' | 'cash';
+  amount:    number;
+  reference?: string;
+}
 
 @Component({
-  selector:    'app-payment',
-  standalone:  true,
-  imports:     [CommonModule, FormsModule],
+  selector: 'app-payment',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   templateUrl: './payment.component.html',
-  styleUrls:   ['./payment.component.css'],
+  styleUrls: ['./payment.component.scss'],
   animations: [
     trigger('checkAnim', [
       transition(':enter', [
-        style({ transform: 'scale(0.5)', opacity: 0 }),
-        animate('500ms cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                style({ transform: 'scale(1)', opacity: 1 }))
+        style({ opacity: 0, transform: 'scale(0.8)' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'scale(1)' }))
       ])
     ])
   ]
 })
-export class PaymentComponent {
-  payMethod    = signal<'gcash' | 'maya' | 'bank'>('gcash');
-  paymentDone  = signal(false);
-  loading      = signal(false);
-  errorMsg     = signal('');
+export class PaymentComponent implements OnInit {
 
-  totalAmount  = 750;
+  // ── Signals — names match exactly what the HTML template uses ──────────────
+  loading     = signal(false);
+  errorMsg    = signal<string | null>(null);
+  paymentDone = signal(false);
+  payMethod   = signal<'gcash' | 'maya' | 'bank' | 'cash'>('gcash');
+
+  // ── Form fields ─────────────────────────────────────────────────────────────
   gcashNum     = '';
   mayaNum      = '';
   selectedBank = 'BDO';
-  banks        = ['BDO', 'BPI', 'UnionBank', 'Metrobank', 'PNB'];
+  banks        = ['BDO', 'BPI', 'Metrobank', 'UnionBank', 'Landbank', 'PNB'];
 
-  // Populated after successful payment
+  // ── Receipt data ─────────────────────────────────────────────────────────────
   bookingRef  = '';
-  paymentDate = '';
+  totalAmount = 0;
+  paymentDate = new DatePipe('en-PH').transform(new Date(), 'MMMM d, y') ?? '';
 
   constructor(
-    private bookingService: BookingService,
-    private paymentService: PaymentService,
-    private router: Router
+    private router:         Router,
+    private http:           HttpClient,
+    private bookingService: BookingService
   ) {}
 
-  setMethod(m: 'gcash' | 'maya' | 'bank'): void { this.payMethod.set(m); }
+  ngOnInit(): void {
+    // Guard: no confirmed booking → redirect to dashboard
+    if (!this.bookingService.confirmedId()) {
+      this.router.navigate(['/bookings']);
+      return;
+    }
+    // Pre-fill receipt ref for display
+    this.bookingRef = this.bookingService.confirmedRef() ?? '';
+  }
 
+  setMethod(m: 'gcash' | 'maya' | 'bank' | 'cash'): void {
+    this.payMethod.set(m);
+  }
+
+  // Called by (click)="processPayment()" in the template
   processPayment(): void {
-    this.errorMsg.set('');
+    const id = this.bookingService.confirmedId();
 
-    // Basic validation
-    const method = this.payMethod();
-    if ((method === 'gcash' && !this.gcashNum.trim()) ||
-        (method === 'maya'  && !this.mayaNum.trim())) {
-      this.errorMsg.set('Please enter your mobile number.');
+    if (!id) {
+      this.errorMsg.set('No active booking found. Please start a new booking.');
       return;
     }
 
     this.loading.set(true);
+    this.errorMsg.set(null);
 
-    const payload = {
-      bookingId:    this.bookingService.confirmedRef() ? undefined : undefined, // attach if you store _id
-      method,
-      mobileNumber: method === 'gcash' ? this.gcashNum : method === 'maya' ? this.mayaNum : undefined,
-      bank:         method === 'bank' ? this.selectedBank : undefined,
-      amount:       this.totalAmount,
+    const payload: PaymentPayload = {
+      bookingId: id,                  // ← THE FIX: was always undefined before
+      method:    this.payMethod(),
+      amount:    this.totalAmount,
     };
 
-    this.paymentService.createPayment(payload).subscribe({
-      next: (res) => {
-        this.bookingRef  = res.payment.ref;
-        this.paymentDate = new Date(res.payment.createdAt).toLocaleDateString('en-PH', {
-          year: 'numeric', month: 'short', day: 'numeric'
-        });
+    this.http.post(`${environment.apiUrl}/api/payments`, payload).subscribe({
+      next: () => {
         this.loading.set(false);
         this.paymentDone.set(true);
-        this.bookingService.reset(); // clear booking state
+        this.bookingService.clearConfirmedBooking();
+        // Auto-navigate after showing success screen
+        setTimeout(() => this.router.navigate(['/bookings']), 4000);
       },
       error: (err) => {
         this.loading.set(false);
-        this.errorMsg.set(err?.error?.error ?? 'Payment failed. Please try again.');
-      }
+        this.errorMsg.set(err?.error?.message ?? 'Payment failed. Please try again.');
+      },
     });
   }
 
-  go(path: string): void { this.router.navigate([path]); }
+  go(path: string): void {
+    this.router.navigate([path]);
+  }
 }

@@ -1,100 +1,101 @@
 const express = require('express');
-const router  = express.Router();
+const router = express.Router();
 const Booking = require('../models/Booking');
-const Listing = require('../models/Listing');
 const { protect } = require('../middleware/auth');
 
-// ─── IMPORTANT: /my must be declared BEFORE /:id ─────────────────────────────
-// If /:id is first, Express will treat "my" as an ID and crash.
-
-// GET /api/bookings/my — logged-in user's bookings only
-router.get('/my', protect, async (req, res) => {
-  try {
-    const bookings = await Booking
-      .find({ userId: req.user.id })
-      .populate('listingId') // fills in provider details
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, data: bookings });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// GET /api/bookings — admin: all bookings
-router.get('/', protect, async (req, res) => {
-  try {
-    const bookings = await Booking
-      .find()
-      .populate('userId',    'name email')
-      .populate('listingId', 'name service rate')
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, data: bookings });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// POST /api/bookings — create a booking
+// POST /api/bookings — create a new booking
+// The model's pre('save') hook generates the ref (SK-XXXXX), so we do NOT generate it here.
 router.post('/', protect, async (req, res) => {
   try {
-    const bookingData = {
-      ...req.body,
+    const {
+      providerId,
+      serviceId,
+      scheduledDate,
+      scheduledTime,
+      address,
+      notes,
+      paymentMethod,
+    } = req.body;
+
+    const booking = await Booking.create({
       userId: req.user.id,
-      status: 'Pending',
-      rated:  false,
-    };
-    const booking = await Booking.create(bookingData);
+      providerId,
+      serviceId,
+      scheduledDate,
+      scheduledTime,
+      address,
+      notes,
+      paymentMethod,
+      status: 'pending',
+    });
 
-    // Generate a human-friendly reference  e.g.  SK-A3F2C
-    const ref = `SK-${booking._id.toString().slice(-5).toUpperCase()}`;
-
-    res.status(201).json({ success: true, data: booking, ref });
+    // Return both _id (needed by payment) and ref (human-readable)
+    res.status(201).json({
+      success: true,
+      data: booking,
+      _id: booking._id,
+      ref: booking.ref,
+    });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    console.error('Create booking error:', err);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/bookings/:id — single booking detail
+// GET /api/bookings — get all bookings for logged-in user
+router.get('/', protect, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ userId: req.user.id })
+      .populate('providerId', 'name avatar')
+      .populate('serviceId', 'title price')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: bookings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/bookings/:id — get a SINGLE booking by its MongoDB _id
+// BUG FIX: was using Booking.find({ userId }) instead of Booking.findById(req.params.id)
 router.get('/:id', protect, async (req, res) => {
   try {
-    const booking = await Booking
-      .find({ userId: req.user.id })
-      .populate({ 
-      path: 'listingId',
-      strictPopulate: false});
+    const booking = await Booking.findById(req.params.id)
+      .populate('providerId', 'name avatar')
+      .populate('serviceId', 'title price');
 
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    // Ensure only the owner (or admin) can view it
+    if (booking.userId.toString() !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+
     res.json({ success: true, data: booking });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// PUT /api/bookings/:id/cancel — cancel a booking
-router.put('/:id/cancel', protect, async (req, res) => {
+// PATCH /api/bookings/:id/status — update booking status (admin / provider)
+router.patch('/:id/status', protect, async (req, res) => {
   try {
+    const { status } = req.body;
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
-      { status: 'Cancelled' },
-      { new: true }
+      { status },
+      { new: true, runValidators: true }
     );
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-    res.json({ success: true, data: booking });
-  } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
-  }
-});
 
-// PATCH /api/bookings/:id — general update (admin: change status, etc.)
-router.patch('/:id', protect, async (req, res) => {
-  try {
-    const booking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (!booking) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
     res.json({ success: true, data: booking });
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
