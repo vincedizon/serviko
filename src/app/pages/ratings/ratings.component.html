@@ -1,0 +1,65 @@
+<div class="page-header">
+  <span class="section-label">Community Trust</span>
+  <h1 class="page-title">Ratings &amp; Reviews</h1>
+  <p class="page-subtitle">Honest feedback from verified clients across Pampanga</p>
+</div>
+
+<div class="container">
+  <!-- Overview -->
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="rating-overview">
+      <div class="rating-big">
+        <div class="rating-num">4.8</div>
+        <div class="stars" style="justify-content:center;margin:.4rem 0">
+          <span class="star filled" *ngFor="let i of starsArray">★</span>
+        </div>
+        <div class="rating-total">2,341 total reviews</div>
+      </div>
+      <div>
+        <div class="rating-bar-row" *ngFor="let b of breakdown">
+          <span class="rating-bar-label">{{ b.stars }}★</span>
+          <div class="rating-bar-track">
+            <div class="rating-bar-fill" [style.width.%]="b.pct"></div>
+          </div>
+          <span class="rating-bar-count">{{ b.count }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.5rem">
+    <button class="btn" [class.btn-primary]="rFilter()===null" [class.btn-ghost]="rFilter()!==null" (click)="setFilter(null)">All Reviews</button>
+    <button class="btn" *ngFor="let r of [5,4,3]"
+            [class.btn-primary]="rFilter()===r" [class.btn-ghost]="rFilter()!==r"
+            (click)="setFilter(r)">{{ r }} Stars</button>
+  </div>
+
+  <!-- Review Cards -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
+    <div class="card review-card" *ngFor="let r of filtered()">
+      <div style="display:flex;align-items:flex-start;gap:1rem">
+        <div class="reviewer-avatar reviewer-lg">{{ r.client[0] }}</div>
+        <div style="flex:1">
+          <div class="review-top">
+            <div>
+              <div style="font-weight:600">{{ r.client }}</div>
+              <div style="font-size:.8rem;color:var(--muted)">{{ r.date }} · {{ r.service }}</div>
+            </div>
+            <div class="stars">
+              <span class="star" [class.filled]="i <= r.rating" *ngFor="let i of starsArray">★</span>
+            </div>
+          </div>
+          <p style="font-size:.875rem;color:var(--muted);line-height:1.7;margin-bottom:.6rem">{{ r.text }}</p>
+          <div style="font-size:.8rem;color:var(--muted)">
+            👷 <strong style="color:var(--text)">{{ r.provider }}</strong> — {{ r.providerService }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="filtered().length === 0" style="text-align:center;padding:3rem;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:.75rem">💬</div>
+      <p>No reviews found for this filter.</p>
+    </div>
+  </div>
+</div>

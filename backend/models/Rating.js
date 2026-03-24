@@ -1,0 +1,33 @@
+const mongoose = require('mongoose');
+
+const ratingSchema = new mongoose.Schema({
+  listing: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Listing',
+    required: true
+  },
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    required: true
+  },
+  customer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  provider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  score: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
+  },
+  comment: { type: String, trim: true }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Rating', ratingSchema);

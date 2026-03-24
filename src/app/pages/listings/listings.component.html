@@ -1,0 +1,88 @@
+<div class="listings-layout">
+  
+  <!-- Filter Sidebar -->
+  <aside class="filter-panel">
+    <h3 class="filter-title">Filters</h3>
+
+    <!-- Search -->
+    <div class="filter-group">
+      <label class="filter-label">Search</label>
+      <input type="text" class="form-control" placeholder="Search services..." 
+             [ngModel]="search()" (ngModelChange)="updateSearch($event)">
+    </div>
+
+    <!-- Categories -->
+    <div class="filter-group">
+      <label class="filter-label">Category</label>
+      <div class="filter-option" *ngFor="let cat of categories" 
+           [class.active]="selectedCats()[cat]" 
+           (click)="toggleCat(cat)">
+        <input type="checkbox" [checked]="selectedCats()[cat]" readonly style="pointer-events: none;">
+        <span>{{ cat }}</span>
+      </div>
+    </div>
+
+    <!-- Price Filter -->
+    <div class="filter-group">
+      <label class="filter-label">Max Price / Hour</label>
+      <input type="range" class="range-slider" min="300" max="3000" step="50" 
+             [ngModel]="maxRate()" (ngModelChange)="updateMaxRate($event)">
+      <div class="range-value">₱{{ maxRate() }}</div>
+    </div>
+
+    <!-- Rating Filter -->
+    <div class="filter-group">
+      <label class="filter-label">Minimum Rating</label>
+      <div class="stars" style="cursor: pointer;">
+        <span *ngFor="let s of [1,2,3,4,5]" class="star" 
+              [class.filled]="s <= minRating()" 
+              (click)="updateRating(s)">★</span>
+      </div>
+    </div>
+
+    <!-- Verified Toggle -->
+    <div class="filter-option" (click)="toggleVerified()">
+      <input type="checkbox" [checked]="verifiedOnly()" readonly style="pointer-events: none;">
+      <span>Verified Only</span>
+    </div>
+
+    <div class="divider"></div>
+    <button class="btn btn-secondary btn-block" (click)="clearFilters()">Reset Filters</button>
+  </aside>
+
+  <!-- Main Results -->
+  <main>
+
+    <!-- Error State -->
+    <div *ngIf="errorMsg()" class="listings-empty" style="color: #e53e3e; border: 1px solid #fed7d7; background: #fff5f5; border-radius: 8px; padding: 2rem; text-align: center; margin-bottom: 1rem;">
+      <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚠️</div>
+      <h3>{{ errorMsg() }}</h3>
+      <button class="btn btn-primary" (click)="loadListings()" style="margin-top: 1rem;">Retry</button>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="listings-grid">
+      <div class="provider-card" *ngFor="let i of [1,2,3,4,5,6]" style="pointer-events: none;">
+        <div class="provider-card-img skeleton" style="height: 120px;"></div>
+        <div class="provider-card-body">
+          <div class="skeleton" style="height: 14px; width: 60%; margin-bottom: 8px; border-radius: 4px;"></div>
+          <div class="skeleton" style="height: 18px; width: 80%; margin-bottom: 12px; border-radius: 4px;"></div>
+          <div class="skeleton" style="height: 14px; width: 40%; border-radius: 4px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loaded State -->
+    <ng-container *ngIf="!isLoading() && !errorMsg()">
+      <div class="listings-header">
+        <span class="results-count">{{ filteredProviders().length }} services available</span>
+        
+        <select class="form-control" style="width: auto;" [ngModel]="sortBy()" (ngModelChange)="updateSort($event)">
+          <option value="rating">Highest Rated</option>
+          <option value="rate">Lowest Price</option>
+          <option value="name">Name (A-Z)</option>
+        </select>
+      </div>
+
+      <div class="listings-grid" *ngIf="filteredProviders().length > 0; else emptyState" @cardStagger>
+        <

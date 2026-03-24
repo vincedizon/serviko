@@ -1,0 +1,40 @@
+<nav class="navbar" *ngIf="!isAuthPage()">
+
+  <!-- Brand -->
+  <a class="navbar-brand" routerLink="/">
+    <span class="brand-dot"></span> ServiKo
+  </a>
+
+  <!-- Nav Links -->
+  <div class="navbar-links">
+    <a class="nav-link" routerLink="/"           routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">Home</a>
+    <a class="nav-link" routerLink="/listings"   routerLinkActive="active">Services</a>
+    <a class="nav-link" routerLink="/ratings"    routerLinkActive="active">Reviews</a>
+    <a class="nav-link" routerLink="/bookings"   routerLinkActive="active" *ngIf="auth.isLoggedIn()">My Bookings</a>
+    <a class="nav-link" routerLink="/admin"      routerLinkActive="active" *ngIf="auth.isAdmin()">Admin</a>
+  </div>
+
+  <!-- Actions -->
+  <div class="navbar-actions">
+    <!-- Guest -->
+    <ng-container *ngIf="!auth.isLoggedIn()">
+      <a class="btn-nav" routerLink="/login">Sign In</a>
+      <a class="btn-nav-solid" routerLink="/register">Get Started</a>
+    </ng-container>
+
+    <!-- Logged in -->
+    <div class="user-area" *ngIf="auth.isLoggedIn()">
+      <span class="user-name">{{ auth.userName() }}</span>
+      <div class="user-avatar" (click)="toggleMenu()">{{ auth.userName()[0] }}</div>
+
+      <!-- Dropdown -->
+      <div class="user-dropdown" *ngIf="showMenu()">
+        <a class="dropdown-item" routerLink="/bookings" (click)="closeMenu()">📋 My Bookings</a>
+        <a class="dropdown-item" routerLink="/ratings"  (click)="closeMenu()">⭐ Reviews</a>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item danger" (click)="logout()">🚪 Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+</nav>

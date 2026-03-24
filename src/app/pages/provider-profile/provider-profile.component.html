@@ -1,0 +1,132 @@
+<!-- Profile Hero -->
+<div class="profile-hero">
+  <div class="profile-hero-inner">
+    <div class="profile-avatar">{{ provider.icon }}</div>
+    <div class="profile-info">
+      <div class="profile-name-row">
+        <h1 class="profile-name">{{ provider.name }}</h1>
+        <span class="badge badge-success" *ngIf="provider.verified">✓ ID Verified</span>
+      </div>
+      <div class="profile-tags">
+        <span class="badge badge-accent">{{ provider.service }}</span>
+        <span class="badge badge-muted">📍 {{ provider.city }}, Pampanga</span>
+        <span class="badge badge-muted">🕐 {{ provider.responseTime }}</span>
+      </div>
+      <div class="profile-stats">
+        <div class="pstat"><div class="pstat-num">{{ provider.rating }}</div><div class="pstat-label">Rating</div></div>
+        <div class="pstat"><div class="pstat-num">{{ provider.reviews }}</div><div class="pstat-label">Reviews</div></div>
+        <div class="pstat"><div class="pstat-num">{{ provider.jobs }}</div><div class="pstat-label">Jobs Done</div></div>
+        <div class="pstat"><div class="pstat-num">{{ provider.years }}yrs</div><div class="pstat-label">Experience</div></div>
+      </div>
+      <div class="profile-actions">
+        <button class="btn btn-primary" (click)="book()">📅 Book Now</button>
+        <button class="btn btn-secondary">💬 Message</button>
+        <button class="btn btn-ghost">♡ Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Body -->
+<div class="profile-layout">
+
+  <!-- Left -->
+  <div>
+    <div class="tabs">
+      <div class="tab" [class.active]="tab()==='overview'"  (click)="setTab('overview')">Overview</div>
+      <div class="tab" [class.active]="tab()==='services'"  (click)="setTab('services')">Services &amp; Rates</div>
+      <div class="tab" [class.active]="tab()==='reviews'"   (click)="setTab('reviews')">Reviews ({{ provider.reviews }})</div>
+    </div>
+
+    <!-- Overview -->
+    <ng-container *ngIf="tab() === 'overview'">
+      <div class="card" style="margin-bottom:1rem">
+        <h3 class="card-section-title">About</h3>
+        <p style="color:var(--muted);font-size:.9rem;line-height:1.7">{{ provider.about }}</p>
+      </div>
+      <div class="card">
+        <h3 class="card-section-title">Specialties</h3>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <span class="badge badge-muted" *ngFor="let s of provider.specialties">{{ s }}</span>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Services -->
+    <div class="services-list" *ngIf="tab() === 'services'">
+      <div class="service-item" *ngFor="let s of provider.serviceList">
+        <div class="service-item-left">
+          <div class="service-item-icon">{{ s.icon }}</div>
+          <div>
+            <div class="service-item-name">{{ s.name }}</div>
+            <div class="service-item-desc">{{ s.desc }}</div>
+          </div>
+        </div>
+        <div>
+          <div class="service-item-price">₱{{ s.rate }}</div>
+          <div style="font-size:.75rem;color:var(--muted);text-align:right">/{{ s.unit }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reviews -->
+    <ng-container *ngIf="tab() === 'reviews'">
+      <div class="card" style="margin-bottom:1rem">
+        <div class="rating-overview">
+          <div class="rating-big">
+            <div class="rating-num">{{ provider.rating }}</div>
+            <div class="stars" style="justify-content:center;margin:.3rem 0">
+              <span class="star filled" *ngFor="let i of starsRange(provider.rating)">★</span>
+            </div>
+            <div class="rating-total">{{ provider.reviews }} reviews</div>
+          </div>
+          <div>
+            <div class="rating-bar-row" *ngFor="let b of ratingBreakdown">
+              <span class="rating-bar-label">{{ b.stars }}</span>
+              <div class="rating-bar-track">
+                <div class="rating-bar-fill" [style.width.%]="b.pct"></div>
+              </div>
+              <span class="rating-bar-count">{{ b.count }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="review-item" *ngFor="let r of reviews">
+          <div class="review-header">
+            <div class="reviewer-avatar">{{ r.name[0] }}</div>
+            <div>
+              <div class="reviewer-name">{{ r.name }}</div>
+              <div class="review-date">{{ r.date }}</div>
+            </div>
+            <div class="stars" style="margin-left:auto">
+              <span class="star" [class.filled]="i <= r.rating" *ngFor="let i of starsArray">★</span>
+            </div>
+          </div>
+          <p class="review-text">{{ r.text }}</p>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <!-- Sidebar -->
+  <div>
+    <div class="card" style="margin-bottom:1rem">
+      <h3 class="card-section-title">Quick Book</h3>
+      <div class="quick-book-row">
+        <span style="color:var(--muted)">Starting rate</span>
+        <span style="font-weight:700;color:var(--accent);font-family:'Syne',sans-serif">₱{{ provider.rate }}/hr</span>
+      </div>
+      <button class="btn btn-primary btn-block" (click)="book()">Book This Provider</button>
+      <p style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:.75rem">Free cancellation up to 24hrs before</p>
+    </div>
+    <div class="card">
+      <h3 class="card-section-title">Provider Details</h3>
+      <div class="detail-row"><span>Location</span><span>{{ provider.city }}</span></div>
+      <div class="detail-row"><span>Response Time</span><span>{{ provider.responseTime }}</span></div>
+      <div class="detail-row"><span>Member Since</span><span>{{ provider.memberSince }}</span></div>
+      <div class="detail-row"><span>Languages</span><span>Filipino, English</span></div>
+    </div>
+  </div>
+
+</div>

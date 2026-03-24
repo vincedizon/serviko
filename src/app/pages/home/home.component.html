@@ -1,0 +1,59 @@
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">🚀 Serving Pampanga &amp; Central Luzon</div>
+    <h1 class="hero-title">Find Trusted Home <span>Service Pros</span> Near You</h1>
+    <p class="hero-desc">
+      Book verified electricians, plumbers, carpenters, and more — with secure
+      GCash/Maya payments and real reviews from your community.
+    </p>
+
+    <div class="hero-search-wrapper" style="margin-bottom: 2rem; display: flex; gap: 0.75rem; max-width: 500px;">
+      <input type="text" class="form-control" placeholder="What service are you looking for?" 
+             [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" style="background: white; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <button class="btn btn-primary" (click)="onSearch()">Search</button>
+    </div>
+
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" (click)="go('/listings')">Browse Services</button>
+      <button class="btn btn-secondary btn-lg" (click)="go('/register')">Become a Provider</button>
+    </div>
+  </div>
+  <div class="hero-stats">
+    <div class="stat-item"><div class="stat-num">2,800+</div><div class="stat-label">Verified Providers</div></div>
+    <div class="stat-item"><div class="stat-num">15,000+</div><div class="stat-label">Jobs Completed</div></div>
+    <div class="stat-item"><div class="stat-num">4.8★</div><div class="stat-label">Average Rating</div></div>
+    <div class="stat-item"><div class="stat-num">₱0</div><div class="stat-label">Booking Fee</div></div>
+  </div>
+</section>
+
+<!-- SERVICE CATEGORIES -->
+<section class="services-section">
+  <span class="section-label">What We Offer</span>
+  <h2 class="section-title">Browse by Service Type</h2>
+  <p class="section-sub">From minor fixes to full renovations — find the right pro for every job</p>
+  <div class="services-grid">
+    <div class="service-card" *ngFor="let s of serviceCategories" (click)="go('/listings')">
+      <div class="service-icon">{{ s.icon }}</div>
+      <div class="service-name">{{ s.name }}</div>
+      <div class="service-count">{{ s.count }} providers</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section">
+  <div class="how-inner">
+    <span class="section-label" style="display:block;text-align:center">How It Works</span>
+    <h2 class="section-title" style="text-align:center">Book a Service in 4 Easy Steps</h2>
+    <div class="steps-grid">
+      <div class="step-card" *ngFor="let step of steps">
+        <div class="step-num">{{ step.num }}</div>
+        <div class="step-title">{{ step.title }}</div>
+        <p class="step-desc">{{ step.desc }}</p>
+      </div>
+    </div>
+  </div>
+</section>

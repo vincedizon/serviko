@@ -1,0 +1,106 @@
+<div class="auth-page">
+  <div class="auth-bg"></div>
+
+  <div class="auth-card" @fade>
+    <div class="auth-logo">
+      <div class="auth-logo-text">Serviko</div>
+    </div>
+
+    <h2 class="auth-title">Create Account</h2>
+    <p class="auth-sub">Join the community of trusted services</p>
+
+    <!-- Role Switcher -->
+    <div class="role-tabs">
+      <div class="role-tab" [class.active]="role() === 'client'" (click)="setRole('client')">
+        Client
+      </div>
+      <div class="role-tab" [class.active]="role() === 'provider'" (click)="setRole('provider')">
+        Provider
+      </div>
+    </div>
+
+    <div class="alert alert-danger" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+
+    <form class="auth-form" (ngSubmit)="register()">
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">First Name</label>
+          <input type="text" class="form-control" [(ngModel)]="firstName" name="firstName" placeholder="Juan" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Last Name</label>
+          <input type="text" class="form-control" [(ngModel)]="lastName" name="lastName" placeholder="Dela Cruz" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-control" [(ngModel)]="email" name="email" placeholder="juan@example.com" required>
+      </div>
+
+      <!-- Provider Specific Fields -->
+      <ng-container *ngIf="role() === 'provider'">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">City</label>
+            <select class="form-control" [(ngModel)]="city" name="city">
+              <option value="" disabled selected>Select City</option>
+              <option *ngFor="let c of cities" [value]="c">{{c}}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Service Type</label>
+            <select class="form-control" [(ngModel)]="serviceType" name="serviceType">
+              <option value="" disabled selected>Select Service</option>
+              <option *ngFor="let s of serviceTypes" [value]="s">{{s}}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+           <label class="form-label">Upload Valid ID</label>
+           <label class="file-upload-label" [class.has-file]="!!idDisplayName">
+             <input type="file" style="display:none" (change)="onFileChange($event)">
+             <div class="file-upload-box">
+               <div class="file-upload-icon">
+                 <span *ngIf="!idDisplayName">📂</span>
+                 <span *ngIf="idDisplayName">✓</span>
+               </div>
+               <div class="file-upload-main">
+                 <div class="file-upload-text">{{ idDisplayName || 'Choose a file...' }}</div>
+                 <div class="file-upload-sub">{{ idDisplayName ? 'Ready to upload' : 'Max 5MB (JPG, PNG, PDF)' }}</div>
+               </div>
+               <div class="file-upload-btn">{{ idDisplayName ? 'Change' : 'Browse' }}</div>
+             </div>
+           </label>
+        </div>
+      </ng-container>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" class="form-control" [(ngModel)]="password" name="password" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input type="password" class="form-control" [(ngModel)]="confirmPassword" name="confirmPassword" placeholder="••••••••" required>
+        </div>
+      </div>
+
+      <label class="agree-label">
+        <input type="checkbox" [(ngModel)]="agree" name="agree">
+        <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</span>
+      </label>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" [disabled]="loading()">
+        <span *ngIf="!loading()">Create Account</span>
+        <span *ngIf="loading()" class="spinner"></span>
+      </button>
+
+      <div class="auth-switch">
+        Already have an account? <a routerLink="/login">Sign In</a>
+      </div>
+    </form>
+  </div>
+</div>

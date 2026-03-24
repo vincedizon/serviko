@@ -1,0 +1,78 @@
+<div class="page-header">
+  <span class="section-label">Dashboard</span>
+  <h1 class="page-title">My Bookings</h1>
+  <p class="page-subtitle">Track and manage all your service bookings</p>
+</div>
+
+<div class="container">
+  <!-- Stats -->
+  <div class="dash-grid">
+    <div class="dash-stat" *ngFor="let s of dashStats">
+      <div class="dash-stat-label">{{ s.label }}</div>
+      <div class="dash-stat-val" [style.color]="s.color">{{ s.val }}</div>
+      <div class="dash-stat-sub">{{ s.sub }}</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <div class="tab" [class.active]="activeTab()==='all'"       (click)="setTab('all')">All</div>
+    <div class="tab" [class.active]="activeTab()==='pending'"   (click)="setTab('pending')">Pending</div>
+    <div class="tab" [class.active]="activeTab()==='active'"    (click)="setTab('active')">Active</div>
+    <div class="tab" [class.active]="activeTab()==='completed'" (click)="setTab('completed')">Completed</div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <div class="table-toolbar">
+      <span style="font-weight:600;font-size:.9rem">Booking History</span>
+      <button class="btn btn-primary btn-sm" (click)="go('/listings')">+ New Booking</button>
+    </div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Booking ID</th><th>Service</th><th>Provider</th>
+          <th>Date</th><th>Amount</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let b of filtered()">
+          <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent)">#{{ b.id }}</td>
+          <td>{{ b.service }}</td>
+          <td>{{ b.provider }}</td>
+          <td>{{ b.date }}</td>
+          <td style="font-weight:600">₱{{ b.amount }}</td>
+          <td><span class="badge" [ngClass]="statusBadge(b.status)">{{ b.status }}</span></td>
+          <td>
+            <button class="btn btn-sm btn-ghost"   *ngIf="b.status==='Completed' && !b.rated" (click)="openRating(b)">⭐ Rate</button>
+            <button class="btn btn-sm btn-danger"  *ngIf="b.status==='Pending'" (click)="cancelBooking(b)">Cancel</button>
+            <span style="font-size:.8rem;color:var(--muted)" *ngIf="b.status==='Completed' && b.rated">Rated ✓</span>
+            <span style="font-size:.8rem;color:var(--muted)" *ngIf="b.status==='Active'">In Progress</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Rating Modal -->
+  <div class="modal-overlay" *ngIf="showModal()">
+    <div class="modal-card">
+      <h3 style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:.3rem">Rate Your Experience</h3>
+      <p style="font-size:.875rem;color:var(--muted);margin-bottom:1.5rem">How was {{ ratingTarget()?.provider }}?</p>
+      <div class="rating-stars-lg">
+        <span *ngFor="let i of starsArray"
+              [style.color]="i <= tempRating() ? 'var(--accent)' : 'var(--border)'"
+              [style.transform]="i <= tempRating() ? 'scale(1.15)' : 'scale(1)'"
+              (click)="setRating(i)">★</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Write a Review</label>
+        <textarea class="form-control" rows="3" [(ngModel)]="ratingText" placeholder="Share your experience..."></textarea>
+      </div>
+      <div style="display:flex;gap:.75rem;margin-top:1rem">
+        <button class="btn btn-ghost"   (click)="showModal.set(false)">Cancel</button>
+        <button class="btn btn-primary" (click)="submitRating()">Submit Review</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,169 @@
+<div class="admin-layout">
+
+  <!-- Sidebar -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-label">Admin Panel</div>
+    <div class="admin-nav-item" [class.active]="tab()==='dashboard'"    (click)="setTab('dashboard')">    <span>📊</span> Dashboard</div>
+    <div class="admin-nav-item" [class.active]="tab()==='providers'"    (click)="setTab('providers')">    <span>🔧</span> Providers</div>
+    <div class="admin-nav-item" [class.active]="tab()==='users'"        (click)="setTab('users')">        <span>👥</span> Users</div>
+    <div class="admin-nav-item" [class.active]="tab()==='bookings'"     (click)="setTab('bookings')">     <span>📋</span> Bookings</div>
+    <div class="admin-nav-item" [class.active]="tab()==='payments'"     (click)="setTab('payments')">     <span>💳</span> Payments</div>
+    <div class="admin-nav-item" [class.active]="tab()==='verification'" (click)="setTab('verification')">
+      <span>🛡️</span> Verification
+      <span class="badge badge-danger" style="margin-left:auto;font-size:.65rem">{{ pendingVerifications() }}</span>
+    </div>
+    <div class="divider"></div>
+    <div class="admin-nav-item" (click)="go('/')"><span>🏠</span> Back to Site</div>
+  </aside>
+
+  <!-- Content -->
+  <div class="admin-content">
+
+    <!-- Dashboard -->
+    <ng-container *ngIf="tab()==='dashboard'">
+      <div class="admin-header"><h2 class="admin-title">Overview Dashboard</h2></div>
+      <div class="admin-cards">
+        <div class="admin-card" *ngFor="let s of adminStats">
+          <div class="admin-card-icon">{{ s.icon }}</div>
+          <div class="admin-card-val" [style.color]="s.color">{{ s.val }}</div>
+          <div class="admin-card-label">{{ s.label }}</div>
+          <div class="admin-card-trend">{{ s.trend }}</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar"><span style="font-weight:600">Recent Activity</span></div>
+        <table class="data-table">
+          <thead><tr><th>Time</th><th>Event</th><th>User</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let a of recentActivity">
+              <td style="color:var(--muted);font-size:.8rem">{{ a.time }}</td>
+              <td>{{ a.event }}</td><td>{{ a.user }}</td>
+              <td><span class="badge" [ngClass]="statusBadge(a.status)">{{ a.status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <!-- Providers -->
+    <ng-container *ngIf="tab()==='providers'">
+      <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center">
+        <h2 class="admin-title">Service Providers</h2>
+        <button class="btn btn-primary btn-sm">+ Add Provider</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="search-input" [(ngModel)]="providerSearch" placeholder="Search providers..."/>
+          <select class="sort-select" [(ngModel)]="providerFilter">
+            <option value="">All Status</option>
+            <option>Verified</option><option>Pending</option><option>Suspended</option>
+          </select>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Service</th><th>City</th><th>Rating</th><th>Jobs</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of filteredProviders()">
+              <td><div style="font-weight:600">{{ p.name }}</div><div style="font-size:.75rem;color:var(--muted)">{{ p.email }}</div></td>
+              <td>{{ p.service }}</td><td>{{ p.city }}</td>
+              <td>⭐ {{ p.rating }}</td><td>{{ p.jobs }}</td>
+              <td><span class="badge" [ngClass]="providerBadge(p.status)">{{ p.status }}</span></td>
+              <td>
+                <button class="btn btn-sm btn-success" *ngIf="p.status==='Pending'"         (click)="verifyProvider(p)">Verify</button>
+                <button class="btn btn-sm btn-danger"  *ngIf="p.status!=='Suspended'"       (click)="suspendProvider(p)" style="margin-left:.25rem">Suspend</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <!-- Users -->
+    <ng-container *ngIf="tab()==='users'">
+      <div class="admin-header"><h2 class="admin-title">Registered Users</h2></div>
+      <div class="table-wrap">
+        <div class="table-toolbar">
+          <input class="search-input" [(ngModel)]="userSearch" placeholder="Search users..."/>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Email</th><th>City</th><th>Bookings</th><th>Joined</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let u of filteredUsers()">
+              <td><div style="font-weight:600">{{ u.name }}</div></td>
+              <td style="color:var(--muted)">{{ u.email }}</td>
+              <td>{{ u.city }}</td><td>{{ u.bookings }}</td>
+              <td style="font-size:.8rem;color:var(--muted)">{{ u.joined }}</td>
+              <td><span class="badge badge-success">Active</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <!-- Bookings -->
+    <ng-container *ngIf="tab()==='bookings'">
+      <div class="admin-header"><h2 class="admin-title">All Bookings</h2></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>ID</th><th>Client</th><th>Provider</th><th>Service</th><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let b of allBookings">
+              <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent)">#{{ b.id }}</td>
+              <td>{{ b.client }}</td><td>{{ b.provider }}</td><td>{{ b.service }}</td>
+              <td style="font-size:.8rem;color:var(--muted)">{{ b.date }}</td>
+              <td style="font-weight:600">₱{{ b.amount }}</td>
+              <td><span class="badge" [ngClass]="statusBadge(b.status)">{{ b.status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <!-- Payments -->
+    <ng-container *ngIf="tab()==='payments'">
+      <div class="admin-header"><h2 class="admin-title">Payment Transactions</h2></div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Ref #</th><th>Client</th><th>Provider</th><th>Method</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let p of payments">
+              <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--cyan)">{{ p.ref }}</td>
+              <td>{{ p.client }}</td><td>{{ p.provider }}</td>
+              <td><span class="badge badge-muted">{{ p.method }}</span></td>
+              <td style="font-weight:600;color:var(--success)">₱{{ p.amount }}</td>
+              <td style="font-size:.8rem;color:var(--muted)">{{ p.date }}</td>
+              <td><span class="badge" [ngClass]="payBadge(p.status)">{{ p.status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+
+    <!-- Verification -->
+    <ng-container *ngIf="tab()==='verification'">
+      <div class="admin-header"><h2 class="admin-title">ID Verification Queue</h2></div>
+      <div class="alert alert-info">{{ pendingVerifications() }} providers awaiting ID verification review.</div>
+      <div style="display:flex;flex-direction:column;gap:1rem">
+        <div class="card" *ngFor="let v of verificationQueue">
+          <div class="verif-row">
+            <div style="display:flex;align-items:center;gap:1rem">
+              <div class="verif-icon">{{ v.icon }}</div>
+              <div>
+                <div style="font-weight:600">{{ v.name }}</div>
+                <div style="font-size:.8rem;color:var(--muted)">{{ v.service }} · {{ v.city }} · Submitted {{ v.submitted }}</div>
+                <span class="badge badge-muted" style="margin-top:.3rem">{{ v.idType }}</span>
+              </div>
+            </div>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-success btn-sm" (click)="approveVerification(v)">✓ Approve</button>
+              <button class="btn btn-danger  btn-sm" (click)="rejectVerification(v)">✗ Reject</button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="verificationQueue.length===0" style="text-align:center;padding:3rem;color:var(--muted)">
+          🎉 All verification requests have been processed!
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+</div>

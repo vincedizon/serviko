@@ -1,0 +1,57 @@
+<div class="auth-page">
+  <div class="auth-bg"></div>
+  
+  <div class="auth-card" @fade>
+    <div class="auth-logo">
+      <div class="auth-logo-text">Serviko</div>
+    </div>
+
+    <h2 class="auth-title">Welcome Back</h2>
+    <p class="auth-sub">Sign in to manage your bookings and services</p>
+
+    <!-- Error Alert -->
+    <div class="alert alert-danger" *ngIf="errorMsg()">{{ errorMsg() }}</div>
+
+    <form (ngSubmit)="login()">
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-control" placeholder="name@example.com" 
+               [(ngModel)]="email" name="email" required [disabled]="loading()">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-control" placeholder="••••••••" 
+               [(ngModel)]="password" name="password" required [disabled]="loading()">
+      </div>
+
+      <div class="auth-row">
+        <label class="remember-label">
+          <input type="checkbox" [(ngModel)]="remember" name="remember">
+          <span>Remember me</span>
+        </label>
+        <a class="forgot-link">Forgot password?</a>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block btn-lg" [disabled]="loading()">
+        <span *ngIf="!loading()">Sign In</span>
+        <span *ngIf="loading()" class="spinner"></span>
+      </button>
+    </form>
+
+    <div class="auth-divider"><span>or continue with</span></div>
+
+    <div class="social-grid">
+      <button type="button" class="btn btn-secondary">Google</button>
+      <button type="button" class="btn btn-secondary">Facebook</button>
+    </div>
+
+    <div class="auth-switch">
+      Don't have an account? <a routerLink="/register">Get Started</a>
+    </div>
+
+    <div class="auth-demo">
+      Demo: <b>adminserviko.ph</b> / <b>admin123</b>
+    </div>
+  </div>
+</div>

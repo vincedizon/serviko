@@ -1,0 +1,168 @@
+<div class="page-header">
+  <span class="section-label">Schedule</span>
+  <h1 class="page-title">Book a Service</h1>
+  <p class="page-subtitle">Fill in the details to confirm your booking</p>
+</div>
+
+<div class="container">
+  <div class="booking-layout">
+
+    <!-- Steps -->
+    <div>
+      <!-- Step Indicator -->
+      <div class="step-indicator">
+        <div class="step-dot" [class.active]="step()===1" [class.done]="step()>1">{{ step()>1 ? '✓' : '1' }}</div>
+        <div class="step-line" [class.done]="step()>1"></div>
+        <div class="step-dot" [class.active]="step()===2" [class.done]="step()>2">{{ step()>2 ? '✓' : '2' }}</div>
+        <div class="step-line" [class.done]="step()>2"></div>
+        <div class="step-dot" [class.active]="step()===3" [class.done]="step()>3">{{ step()>3 ? '✓' : '3' }}</div>
+        <div class="step-line" [class.done]="step()>3"></div>
+        <div class="step-dot" [class.active]="step()===4">4</div>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="booking-card" *ngIf="step()===1">
+        <h3 class="booking-card-title">📋 Service Details</h3>
+        <div class="form-group">
+          <label class="form-label">Select Service</label>
+          <select class="form-control" [(ngModel)]="service">
+            <option value="">Choose a service...</option>
+            <option *ngFor="let s of services">{{ s }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Describe the Job</label>
+          <textarea class="form-control" rows="4" [(ngModel)]="description" placeholder="Describe the work needed..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Service Address</label>
+          <input class="form-control" [(ngModel)]="address" placeholder="House no., Street, Barangay"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">City / Municipality</label>
+            <select class="form-control" [(ngModel)]="city">
+              <option *ngFor="let c of cities">{{ c }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Estimated Duration</label>
+            <select class="form-control" [(ngModel)]="duration">
+              <option>1 hour</option><option>2 hours</option><option>3 hours</option>
+              <option>Half day (4hrs)</option><option>Full day (8hrs)</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary" (click)="nextStep()" [disabled]="!service">
+          Next: Pick Date &amp; Time →
+        </button>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="booking-card" *ngIf="step()===2">
+        <h3 class="booking-card-title">📅 Date &amp; Time</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Preferred Date</label>
+            <input class="form-control" type="date" [(ngModel)]="date" [min]="today"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Urgency</label>
+            <select class="form-control" [(ngModel)]="urgency">
+              <option>Standard (within 2 days)</option>
+              <option>Express (same day, +₱150)</option>
+              <option>Scheduled (pick date below)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Available Time Slots</label>
+          <div class="time-slots">
+            <button class="time-slot" *ngFor="let slot of timeSlots"
+              [class.selected]="time === slot.time"
+              [class.disabled]="!slot.available"
+              [disabled]="!slot.available"
+              (click)="selectTime(slot.time)">{{ slot.time }}</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem">
+          <button class="btn btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!date || !time">
+            Next: Your Details →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="booking-card" *ngIf="step()===3">
+        <h3 class="booking-card-title">👤 Your Contact Details</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input class="form-control" [(ngModel)]="contactName" placeholder="Juan dela Cruz"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number</label>
+            <input class="form-control" [(ngModel)]="phone" placeholder="+63 9XX XXX XXXX"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Special Instructions <span style="color:var(--muted)">(optional)</span></label>
+          <textarea class="form-control" rows="3" [(ngModel)]="notes" placeholder="Gate code, parking info, pet in house..."></textarea>
+        </div>
+        <div class="alert alert-info">🔒 Your info is only shared with the provider after they accept.</div>
+        <div style="display:flex;gap:.75rem">
+          <button class="btn btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn btn-primary" (click)="nextStep()" [disabled]="!contactName || !phone">
+            Next: Confirm →
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="booking-card" *ngIf="step()===4">
+        <h3 class="booking-card-title">✅ Confirm Booking</h3>
+        <div class="alert alert-info"    *ngIf="!bookingDone()">Please review your booking before proceeding to payment.</div>
+        <div class="alert alert-success" *ngIf="bookingDone()">🎉 Booking submitted! Provider will confirm within 30 minutes.</div>
+        <ng-container *ngIf="!bookingDone()">
+          <div class="review-list">
+            <div class="review-row"><span>Service</span><span>{{ service }}</span></div>
+            <div class="review-row"><span>Date</span><span>{{ date }}</span></div>
+            <div class="review-row"><span>Time</span><span>{{ time }}</span></div>
+            <div class="review-row"><span>Duration</span><span>{{ duration }}</span></div>
+            <div class="review-row"><span>Address</span><span>{{ address }}, {{ city }}</span></div>
+            <div class="review-row last"><span>Contact</span><span>{{ contactName }} · {{ phone }}</span></div>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:1.25rem">
+            <button class="btn btn-ghost"   (click)="prevStep()">← Edit</button>
+            <button class="btn btn-primary" (click)="submit()">Confirm &amp; Pay →</button>
+          </div>
+        </ng-container>
+        <div style="display:flex;gap:.75rem;margin-top:1rem" *ngIf="bookingDone()">
+          <button class="btn btn-secondary" (click)="go('/payment')">Proceed to Payment</button>
+          <button class="btn btn-ghost"     (click)="go('/bookings')">View My Bookings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Sidebar -->
+    <div class="booking-summary-card">
+      <h3 class="summary-title">Booking Summary</h3>
+      <div class="summary-provider">
+        <div style="font-size:2rem">{{ provider.icon }}</div>
+        <div>
+          <div style="font-weight:600;font-size:.9rem">{{ provider.name }}</div>
+          <div style="font-size:.8rem;color:var(--muted)">{{ provider.service }}</div>
+          <span class="badge badge-success" style="margin-top:.3rem;font-size:.7rem">✓ Verified</span>
+        </div>
+      </div>
+      <div class="summary-row"><span>Base rate</span><span>₱{{ provider.rate }}/hr</span></div>
+      <div class="summary-row"><span>Duration</span><span>{{ duration || '—' }}</span></div>
+      <div class="summary-row"><span>Express fee</span><span>{{ urgency.includes('Express') ? '₱150' : '₱0' }}</span></div>
+      <div class="summary-row"><span>Platform fee</span><span>₱50</span></div>
+      <div class="summary-row total"><span>Total</span><span>₱{{ total() }}</span></div>
+      <p style="font-size:.75rem;color:var(--muted);margin-top:.75rem;line-height:1.5">🔒 Payment held in escrow until job completion.</p>
+    </div>
+
+  </div>
+</div>
