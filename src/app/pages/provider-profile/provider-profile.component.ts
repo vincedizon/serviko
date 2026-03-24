@@ -1,10 +1,16 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { ProviderService } from '../../core/services/provider.service';
-import { Provider } from '../../core/models/provider.model';
-import { Review } from '../../core/models/user.model';
+import { ListingService, Listing } from '../../core/services/listing.service';
+import { HttpClient } from '@angular/common/http';
 import { trigger, transition, style, animate } from '@angular/animations';
+
+export interface Review {
+  name: string;
+  date: string;
+  rating: number;
+  text: string;
+}
 
 @Component({
   selector: 'app-provider-profile',
@@ -14,36 +20,110 @@ import { trigger, transition, style, animate } from '@angular/animations';
   styleUrls: ['./provider-profile.component.css'],
   animations: [
     trigger('tabContent', [
-      transition(':enter', [style({ opacity: 0, transform: 'translateY(10px)' }), animate('300ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))])
+      transition(':enter', [
+        style({ opacity: 0, transform: 'translateY(10px)' }),
+        animate('300ms ease-out', style({ opacity: 1, transform: 'translateY(0)' }))
+      ])
     ])
   ]
 })
 export class ProviderProfileComponent implements OnInit {
-  provider!: Provider;
-  tab = signal<'overview' | 'services' | 'reviews'>('overview');
+  // Built from the selected listing
+  provider: any = null;
+  isLoading = signal(true);
+  errorMsg  = signal('');
+
+  tab        = signal<'overview' | 'services' | 'reviews'>('overview');
   starsArray = [1, 2, 3, 4, 5];
 
+  reviews: Review[] = [];
   ratingBreakdown: { stars: number; pct: number; count: number }[] = [];
 
-  reviews: Review[] = [
-    { name: 'Ana Santos',   date: 'Feb 28, 2026', rating: 5, text: 'Excellent work! Fixed our electrical problem quickly and professionally. Will definitely hire again.' },
-    { name: 'Mario Reyes',  date: 'Feb 20, 2026', rating: 5, text: 'Very knowledgeable and honest. Gave us a fair price and completed the job on time.' },
-    { name: 'Grace Flores', date: 'Feb 10, 2026', rating: 4, text: 'Good work overall. Arrived a bit late but the quality of the repair was top notch.' },
-    { name: 'Pedro Cruz',   date: 'Jan 30, 2026', rating: 5, text: 'Highly recommend! Professional, clean, and thorough. Fixed everything in one visit.' },
-  ];
+  private apiUrl = 'http://localhost:3000/api';
 
-  constructor(private providerService: ProviderService, private router: Router) {}
+  constructor(
+    private listingService: ListingService,
+    private http: HttpClient,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
-    this.provider = this.providerService.getSelectedOrFirst();
-    const total = this.provider.reviews;
-    this.ratingBreakdown = [
-      { stars: 5, pct: 78, count: Math.round(total * .78) },
-      { stars: 4, pct: 14, count: Math.round(total * .14) },
-      { stars: 3, pct: 5,  count: Math.round(total * .05) },
-      { stars: 2, pct: 2,  count: Math.round(total * .02) },
-      { stars: 1, pct: 1,  count: Math.round(total * .01) },
-    ];
+    const selected = this.listingService.selectedListing();
+
+    if (!selected) {
+      // No listing selected — go back to listings
+      this.router.navigate(['/listings']);
+      return;
+    }
+
+    this.buildProvider(selected);
+    this.loadReviews(selected._id);
+  }
+
+  /** Map a Listing into the shape the template expects */
+  buildProvider(listing: Listing): void {
+    this.provider = {
+      _id:          listing._id,
+      name:         listing.name,
+      service:      listing.service,
+      icon:         listing.name.charAt(0).toUpperCase(),
+      verified:     listing.verified,
+      rating:       listing.rating ?? 0,
+      rate:         listing.rate,
+      reviews:      0,       // updated after loadReviews
+      jobs:         0,       // can be extended later
+      years:        1,       // can be extended later
+      city:         (listing as any).city ?? 'Angeles City',
+      responseTime: (listing as any).responseTime ?? 'Within 1 hour',
+      memberSince:  (listing as any).memberSince ?? '2024',
+      about:        (listing as any).description ?? `${listing.name} is a verified ${listing.service} professional serving Pampanga and Central Luzon.`,
+      specialties:  (listing as any).specialties ?? [listing.service],
+      serviceList:  (listing as any).serviceList ?? [
+        { icon: '🔧', name: listing.service, desc: 'Standard service', rate: listing.rate, unit: 'hr' }
+      ]
+    };
+
+    this.isLoading.set(false);
+  }
+
+  /** Load real reviews from backend for this listing */
+  loadReviews(listingId: string): void {
+    this.http.get<{ success: boolean; data: any[] }>(
+      `${this.apiUrl}/ratings/listing/${listingId}`
+    ).subscribe({
+      next: (res) => {
+        this.reviews = res.data.map(r => ({
+          name:   r.userName ?? 'Anonymous',
+          date:   new Date(r.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+          rating: r.rating,
+          text:   r.review ?? ''
+        }));
+
+        // Update review count on provider
+        if (this.provider) {
+          this.provider.reviews = this.reviews.length;
+        }
+
+        this.buildRatingBreakdown();
+      },
+      error: () => {
+        // Silently fall back — no reviews yet
+        this.reviews = [];
+        this.buildRatingBreakdown();
+      }
+    });
+  }
+
+  buildRatingBreakdown(): void {
+    const total = this.reviews.length || 1;
+    [5, 4, 3, 2, 1].forEach(star => {
+      const count = this.reviews.filter(r => Math.round(r.rating) === star).length;
+      this.ratingBreakdown.push({
+        stars: star,
+        pct:   Math.round((count / total) * 100),
+        count
+      });
+    });
   }
 
   setTab(t: 'overview' | 'services' | 'reviews'): void { this.tab.set(t); }

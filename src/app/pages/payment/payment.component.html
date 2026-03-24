@@ -1,21 +1,21 @@
 <div class="payment-layout">
-  
+
   <!-- Success State -->
   <div class="success-container" *ngIf="paymentDone()" @checkAnim>
     <div class="success-icon">✓</div>
     <h2 class="success-title">Payment Successful!</h2>
     <p class="success-desc">Your service has been booked and confirmed.</p>
-    
+
     <div class="receipt-card">
       <div class="receipt-row"><span>Reference ID</span><span class="mono">{{ bookingRef }}</span></div>
       <div class="receipt-row"><span>Amount Paid</span><span class="amount">₱{{ totalAmount }}</span></div>
       <div class="receipt-row"><span>Payment Method</span><span class="capitalize">{{ payMethod() }}</span></div>
-      <div class="receipt-row"><span>Date</span><span>Mar 22, 2026</span></div>
+      <div class="receipt-row"><span>Date</span><span>{{ paymentDate }}</span></div>
     </div>
 
     <div class="success-actions">
       <button class="btn btn-primary" (click)="go('/bookings')">View Bookings</button>
-      <button class="btn btn-ghost" (click)="go('/')">Return Home</button>
+      <button class="btn btn-ghost"   (click)="go('/')">Return Home</button>
     </div>
   </div>
 
@@ -35,29 +35,43 @@
       <label class="group-label">Select Payment Method</label>
       <div class="method-options">
         <div class="method-tile" [class.active]="payMethod() === 'gcash'" (click)="setMethod('gcash')">
-          <div class="radio-circle"></div> <span class="method-name">GCash</span>
+          <div class="radio-circle"></div><span class="method-name">GCash</span>
         </div>
         <div class="method-tile" [class.active]="payMethod() === 'maya'" (click)="setMethod('maya')">
-          <div class="radio-circle"></div> <span class="method-name">Maya</span>
+          <div class="radio-circle"></div><span class="method-name">Maya</span>
         </div>
         <div class="method-tile" [class.active]="payMethod() === 'bank'" (click)="setMethod('bank')">
-          <div class="radio-circle"></div> <span class="method-name">Bank Transfer</span>
+          <div class="radio-circle"></div><span class="method-name">Bank Transfer</span>
         </div>
       </div>
     </div>
 
     <div class="input-group slide-down">
-      <ng-container *ngIf="payMethod() === 'gcash' || payMethod() === 'maya'">
-        <label>Mobile Number</label>
-        <input type="text" class="input-field" placeholder="0917 123 4567" [(ngModel)]="payMethod() === 'gcash' ? gcashNum : mayaNum">
+      <ng-container *ngIf="payMethod() === 'gcash'">
+        <label>GCash Mobile Number</label>
+        <input type="text" class="input-field" placeholder="0917 123 4567" [(ngModel)]="gcashNum">
       </ng-container>
-      
+
+      <ng-container *ngIf="payMethod() === 'maya'">
+        <label>Maya Mobile Number</label>
+        <input type="text" class="input-field" placeholder="0917 123 4567" [(ngModel)]="mayaNum">
+      </ng-container>
+
       <ng-container *ngIf="payMethod() === 'bank'">
         <label>Select Bank</label>
-        <select class="input-field" [(ngModel)]="selectedBank"><option *ngFor="let b of banks" [value]="b">{{b}}</option></select>
+        <select class="input-field" [(ngModel)]="selectedBank">
+          <option *ngFor="let b of banks" [value]="b">{{ b }}</option>
+        </select>
       </ng-container>
     </div>
 
-    <button class="btn btn-primary btn-block pay-btn" [disabled]="loading()" (click)="processPayment()">{{ loading() ? 'Processing...' : 'Pay Now' }}</button>
+    <!-- Error Message -->
+    <div class="error-msg" *ngIf="errorMsg()">⚠️ {{ errorMsg() }}</div>
+
+    <button class="btn btn-primary btn-block pay-btn"
+            [disabled]="loading()"
+            (click)="processPayment()">
+      {{ loading() ? 'Processing...' : 'Pay Now' }}
+    </button>
   </div>
 </div>

@@ -72,4 +72,8 @@ export class AuthService {
   isProvider(): boolean {
     return this.currentUser()?.role === 'provider';
   }
+
+  userName(): string {
+    return this.currentUser()?.name ?? '';
+  }
 }

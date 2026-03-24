@@ -1,54 +1,87 @@
 import { Component, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { BookingService } from '../../core/services/booking.service';
+import { CommonModule }      from '@angular/common';
+import { FormsModule }       from '@angular/forms';
+import { Router }            from '@angular/router';
+import { BookingService }    from '../../core/services/booking.service';
+import { PaymentService }    from '../../core/services/payment.service';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 @Component({
-  selector: 'app-payment',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
+  selector:    'app-payment',
+  standalone:  true,
+  imports:     [CommonModule, FormsModule],
   templateUrl: './payment.component.html',
-  styleUrls: ['./payment.component.css'],
+  styleUrls:   ['./payment.component.css'],
   animations: [
     trigger('checkAnim', [
       transition(':enter', [
         style({ transform: 'scale(0.5)', opacity: 0 }),
-        animate('500ms cubic-bezier(0.175, 0.885, 0.32, 1.275)', style({ transform: 'scale(1)', opacity: 1 }))
+        animate('500ms cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                style({ transform: 'scale(1)', opacity: 1 }))
       ])
     ])
   ]
 })
 export class PaymentComponent {
-  payMethod    = signal('gcash');
+  payMethod    = signal<'gcash' | 'maya' | 'bank'>('gcash');
   paymentDone  = signal(false);
   loading      = signal(false);
+  errorMsg     = signal('');
+
   totalAmount  = 750;
   gcashNum     = '';
   mayaNum      = '';
   selectedBank = 'BDO';
-  accountNum   = '';
   banks        = ['BDO', 'BPI', 'UnionBank', 'Metrobank', 'PNB'];
 
-  bookingRef = this.bookingService.confirmedRef() ?? 'SK-10023';
+  // Populated after successful payment
+  bookingRef  = '';
+  paymentDate = '';
 
-  constructor(private bookingService: BookingService, private router: Router) {}
+  constructor(
+    private bookingService: BookingService,
+    private paymentService: PaymentService,
+    private router: Router
+  ) {}
 
-  setMethod(m: string): void { this.payMethod.set(m); }
+  setMethod(m: 'gcash' | 'maya' | 'bank'): void { this.payMethod.set(m); }
 
   processPayment(): void {
-    if (!this.payMethod()) return;
+    this.errorMsg.set('');
+
+    // Basic validation
+    const method = this.payMethod();
+    if ((method === 'gcash' && !this.gcashNum.trim()) ||
+        (method === 'maya'  && !this.mayaNum.trim())) {
+      this.errorMsg.set('Please enter your mobile number.');
+      return;
+    }
+
     this.loading.set(true);
-    setTimeout(() => {
-      // Ensure booking is confirmed in service if not already
-      if (!this.bookingRef) {
-        this.bookingRef = this.bookingService.confirm();
+
+    const payload = {
+      bookingId:    this.bookingService.confirmedRef() ? undefined : undefined, // attach if you store _id
+      method,
+      mobileNumber: method === 'gcash' ? this.gcashNum : method === 'maya' ? this.mayaNum : undefined,
+      bank:         method === 'bank' ? this.selectedBank : undefined,
+      amount:       this.totalAmount,
+    };
+
+    this.paymentService.createPayment(payload).subscribe({
+      next: (res) => {
+        this.bookingRef  = res.payment.ref;
+        this.paymentDate = new Date(res.payment.createdAt).toLocaleDateString('en-PH', {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+        this.loading.set(false);
+        this.paymentDone.set(true);
+        this.bookingService.reset(); // clear booking state
+      },
+      error: (err) => {
+        this.loading.set(false);
+        this.errorMsg.set(err?.error?.error ?? 'Payment failed. Please try again.');
       }
-      // In a real app, here we would validate the payment transaction
-      this.loading.set(false);
-      this.paymentDone.set(true);
-    }, 2000);
+    });
   }
 
   go(path: string): void { this.router.navigate([path]); }

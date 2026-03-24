@@ -1,49 +1,88 @@
-import { Component, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, computed, OnInit } from '@angular/core';
+import { CommonModule }  from '@angular/common';
+import { HttpClient }    from '@angular/common/http';
 
 interface FullReview {
-  client: string; date: string; service: string;
-  provider: string; providerService: string;
-  rating: number; text: string;
+  _id:             string;
+  client:          string;
+  date:            string;
+  service:         string;
+  provider:        string;
+  providerService: string;
+  rating:          number;
+  text:            string;
 }
 
+interface Breakdown { stars: number; pct: number; count: number; }
+
 @Component({
-  selector: 'app-ratings',
-  standalone: true,
-  imports: [CommonModule],
+  selector:    'app-ratings',
+  standalone:  true,
+  imports:     [CommonModule],
   templateUrl: './ratings.component.html',
-  styleUrls: ['./ratings.component.css']
+  styleUrls:   ['./ratings.component.css']
 })
-export class RatingsComponent {
+export class RatingsComponent implements OnInit {
   rFilter    = signal<number | null>(null);
+  loading    = signal(true);
   starsArray = [1, 2, 3, 4, 5];
 
-  breakdown = [
-    { stars: 5, pct: 82, count: 1920 },
-    { stars: 4, pct: 12, count: 281  },
-    { stars: 3, pct: 4,  count: 94   },
-    { stars: 2, pct: 1,  count: 23   },
-    { stars: 1, pct: 1,  count: 23   },
-  ];
+  allReviews = signal<FullReview[]>([]);
+  breakdown  = signal<Breakdown[]>([
+    { stars: 5, pct: 0, count: 0 },
+    { stars: 4, pct: 0, count: 0 },
+    { stars: 3, pct: 0, count: 0 },
+    { stars: 2, pct: 0, count: 0 },
+    { stars: 1, pct: 0, count: 0 },
+  ]);
 
-  allReviews: FullReview[] = [
-    { client:'Ana Santos',    date:'Feb 28, 2026', service:'Electrical Repair',  provider:'Roldan Santos',       providerService:'Electrician',      rating:5, text:'Outstanding! Fixed our wiring issue so fast. Very professional and clean work. Highly recommend!' },
-    { client:'Mario Reyes',   date:'Feb 25, 2026', service:'AC Cleaning',        provider:'Jun Escoto',          providerService:'Aircon Technician', rating:5, text:'Best aircon technician in Pampanga! Very thorough and honest. My unit works like new again.' },
-    { client:'Grace Flores',  date:'Feb 18, 2026', service:'Leak Repair',        provider:'Maria Lacson',        providerService:'Plumber',           rating:4, text:'Great work on the pipe repair. Arrived on time and explained everything clearly before starting.' },
-    { client:'Pedro Cruz',    date:'Feb 10, 2026', service:'House Cleaning',     provider:'Lenie Buenaventura',  providerService:'House Cleaner',     rating:5, text:'Incredible attention to detail! My house has never been this clean. Will book again next week.' },
-    { client:'Rosa Manalo',   date:'Feb 5, 2026',  service:'Carpentry',          provider:'Arnel Dizon',         providerService:'Carpenter',         rating:4, text:'Built us a beautiful custom cabinet. Very skilled craftsman and fair pricing.' },
-    { client:'Ben Torres',    date:'Jan 29, 2026', service:'Painting',           provider:'Rey Cunanan',         providerService:'Painter',           rating:3, text:'Good paint job but took longer than expected. Final result looks nice though.' },
-    { client:'Lisa Garcia',   date:'Jan 22, 2026', service:'Pest Control',       provider:'Carlo Manansala',     providerService:'Pest Control',      rating:5, text:'Termite problem completely solved! Knowledgeable and used safe chemicals around the kids.' },
-  ];
+  averageRating = signal('0.0');
+  totalReviews  = signal(0);
 
   filtered = computed(() => {
     const f = this.rFilter();
-    return f === null ? this.allReviews : this.allReviews.filter(r => r.rating === f);
+    return f === null
+      ? this.allReviews()
+      : this.allReviews().filter(r => r.rating === f);
   });
 
-  setFilter(f: number | null): void { this.rFilter.set(f); }
+  constructor(private http: HttpClient) {}
 
-  starsRange(n: number): number[] {
-    return Array.from({ length: Math.round(n) }, (_, i) => i + 1);
+  ngOnInit(): void {
+    this.http.get<any[]>('http://localhost:3000/api/ratings').subscribe({
+      next: (data) => {
+        // Map backend rating docs to display shape
+        const reviews: FullReview[] = data.map(r => ({
+          _id:             r._id,
+          client:          r.user?.name   ?? 'Anonymous',
+          date:            new Date(r.createdAt).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }),
+          service:         r.listing?.category ?? r.listing?.title ?? 'Service',
+          provider:        r.listing?.providerName ?? 'Provider',
+          providerService: r.listing?.category ?? '',
+          rating:          r.rating,
+          text:            r.comment ?? '',
+        }));
+
+        this.allReviews.set(reviews);
+        this.totalReviews.set(reviews.length);
+
+        // Compute breakdown
+        if (reviews.length > 0) {
+          const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
+          this.averageRating.set(avg.toFixed(1));
+
+          const bd = [5, 4, 3, 2, 1].map(stars => {
+            const count = reviews.filter(r => r.rating === stars).length;
+            return { stars, count, pct: Math.round((count / reviews.length) * 100) };
+          });
+          this.breakdown.set(bd);
+        }
+
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false)
+    });
   }
+
+  setFilter(f: number | null): void { this.rFilter.set(f); }
 }

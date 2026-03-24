@@ -1,52 +1,47 @@
 const express = require('express');
-const router = express.Router();
-const Rating = require('../models/Rating');
-const Listing = require('../models/Listing');
+const router  = express.Router();
+const Rating  = require('../models/Rating');
 const { protect } = require('../middleware/auth');
 
-// GET /api/ratings/listing/:listingId
-router.get('/listing/:listingId', async (req, res) => {
+
+router.get('/', async (req, res) => {
   try {
-    const ratings = await Rating.find({ listing: req.params.listingId })
-      .populate('customer', 'name avatar')
-      .sort({ createdAt: -1 });
-    res.json({ success: true, count: ratings.length, ratings });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const ratings = await Rating.find()
+      .sort({ createdAt: -1 })
+      .populate('user',    'name')
+      .populate('listing', 'title category providerName');
+    res.json(ratings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// POST /api/ratings - Submit a rating
+
+router.get('/listing/:id', async (req, res) => {
+  try {
+    const ratings = await Rating.find({ listing: req.params.id })
+      .sort({ createdAt: -1 })
+      .populate('user', 'name');
+    res.json(ratings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 router.post('/', protect, async (req, res) => {
   try {
-    const { listingId, bookingId, score, comment } = req.body;
-
-    const listing = await Listing.findById(listingId);
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
-
-    const existing = await Rating.findOne({ booking: bookingId, customer: req.user._id });
-    if (existing) return res.status(400).json({ success: false, message: 'Already rated this booking' });
-
-    const rating = await Rating.create({
-      listing: listingId,
-      booking: bookingId,
-      customer: req.user._id,
-      provider: listing.provider,
-      score,
-      comment
+    const { listing, booking, rating, comment } = req.body;
+    const review = await Rating.create({
+      user: req.user.id,
+      listing,
+      booking: booking || null,
+      rating,
+      comment,
     });
-
-    // Update listing average rating
-    const allRatings = await Rating.find({ listing: listingId });
-    const avg = allRatings.reduce((sum, r) => sum + r.score, 0) / allRatings.length;
-    await Listing.findByIdAndUpdate(listingId, {
-      rating: Math.round(avg * 10) / 10,
-      totalRatings: allRatings.length
-    });
-
-    res.status(201).json({ success: true, rating });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(201).json({ success: true, data: review });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
