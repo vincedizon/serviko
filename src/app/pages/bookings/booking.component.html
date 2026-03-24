@@ -79,7 +79,7 @@
         </tr>
         <!-- Booking rows -->
         <tr *ngFor="let b of filtered()">
-          <td style="font-family:'Syne',sans-serif;font-weight:700;color:var(--accent)">#{{ b.id || b._id.slice(-6).toUpperCase() }}</td>
+          <td style="...color:var(--accent)">#{{ b._id.slice(-6).toUpperCase() }}</td>
           <td>{{ b.service }}</td>
           <td>{{ b.provider }}</td>
           <td>{{ b.date | date:'MMM d, y' }}</td>

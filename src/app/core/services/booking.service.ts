@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 // 1. DEFINE THE INTERFACE FIRST (Above the class)
 export interface Booking {
+[x: string]: any;
   _id: string;
   ref?: string;
   userId: string;
@@ -37,8 +38,7 @@ export class BookingService {
 
   constructor(private http: HttpClient) {}
 
-  // If your API returns { data: Booking[] }, use Observable<any>
-  // If your API returns just the array [Booking, Booking], use Observable<Booking[]>
+
   getMyBookings(): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/my-bookings`);
   }

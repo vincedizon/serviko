@@ -43,7 +43,7 @@ router.post('/', protect, async (req, res) => {
 });
 
 // GET /api/bookings — get all bookings for logged-in user
-router.get('/', protect, async (req, res) => {
+router.get('/my-bookings', protect, async (req, res) => {
   try {
     const bookings = await Booking.find({ userId: req.user.id })
       .populate('providerId', 'name avatar')
@@ -58,7 +58,7 @@ router.get('/', protect, async (req, res) => {
 
 // GET /api/bookings/:id — get a SINGLE booking by its MongoDB _id
 // BUG FIX: was using Booking.find({ userId }) instead of Booking.findById(req.params.id)
-router.get('/:id', protect, async (req, res) => {
+router.get('/my-bookings', protect, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('providerId', 'name avatar')

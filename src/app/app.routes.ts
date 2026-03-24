@@ -36,8 +36,8 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'booking',
-    loadComponent: () => import('./pages/booking/booking.component').then(m => m.BookingComponent),
+    path: 'bookings',
+    loadComponent: () => import('./pages/bookings/booking.component').then(m => m.BookingComponent),
     canActivate: [authGuard]
   },
   {
@@ -47,7 +47,7 @@ export const routes: Routes = [
   },
   {
     path: 'bookings',
-    loadComponent: () => import('./pages/booking/booking.component').then(m => m.BookingComponent),
+    loadComponent: () => import('./pages/bookings/booking.component').then(m => m.BookingComponent),
     canActivate: [authGuard]
   },
   {
