@@ -1,40 +1,45 @@
 const mongoose = require('mongoose');
 
 const listingSchema = new mongoose.Schema({
-  title: {
+  name: {
     type: String,
-    required: [true, 'Title is required'],
+    required: [true, 'Provider name is required'],
     trim: true
+  },
+  service: {
+    type: String,
+    required: [true, 'Service type is required'],
+    enum: ['Electrician', 'Plumber', 'Carpenter', 'Painter', 'Aircon Technician',
+           'House Cleaner', 'Welder', 'Pest Control', 'Landscaping', 'Tiling',
+           'Masonry', 'Appliance Repair']
+  },
+  rating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  rate: {
+    type: Number,
+    required: [true, 'Hourly rate is required'],
+    min: 0
+  },
+  verified: {
+    type: Boolean,
+    default: false
   },
   description: {
     type: String,
-    required: [true, 'Description is required']
+    trim: true
   },
-  category: {
+  location: {
     type: String,
-    required: [true, 'Category is required'],
-    enum: ['cleaning', 'plumbing', 'electrical', 'carpentry', 'painting', 'landscaping', 'tutoring', 'other']
+    trim: true
   },
-  price: {
-    type: Number,
-    required: [true, 'Price is required'],
-    min: 0
-  },
-  priceType: {
-    type: String,
-    enum: ['hourly', 'fixed', 'daily'],
-    default: 'hourly'
-  },
-  location: { type: String, trim: true },
-  images: [{ type: String }],
-  provider: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  rating: { type: Number, default: 0 },
-  totalRatings: { type: Number, default: 0 },
-  isAvailable: { type: Boolean, default: true }
+    ref: 'User'
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Listing', listingSchema);

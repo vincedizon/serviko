@@ -85,4 +85,34 @@
       </div>
 
       <div class="listings-grid" *ngIf="filteredProviders().length > 0; else emptyState" @cardStagger>
-        <
+        <div class="provider-card" *ngFor="let p of filteredProviders()" (click)="viewProvider(p)">
+          <div class="provider-card-img">
+            {{ p.name.charAt(0) }}
+            <div class="verified-badge" *ngIf="p.verified">✓ Verified</div>
+          </div>
+          <div class="provider-card-body">
+            <div class="provider-service">{{ p.service }}</div>
+            <h3 class="provider-name">{{ p.name }}</h3>
+            <div class="provider-meta">
+              <div class="provider-rating">
+                <span class="star filled">★</span> <span>{{ p.rating }}</span>
+              </div>
+              <div class="provider-rate">₱{{ p.rate }}<span>/hr</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <ng-template #emptyState>
+        <div class="listings-empty">
+          <div class="skeleton" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 1rem;"></div>
+          <h3>No services found</h3>
+          <p class="section-sub">Try adjusting your search or filters to find what you're looking for.</p>
+          <button class="btn btn-primary" (click)="clearFilters()">Clear Filters</button>
+        </div>
+      </ng-template>
+    </ng-container>
+
+  </main>
+</div>

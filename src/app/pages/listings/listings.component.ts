@@ -2,7 +2,7 @@ import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { ListingService } from '../../core/services/listing.service';
+import { ListingService, Listing } from '../../core/services/listing.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 
 @Component({
@@ -91,4 +91,26 @@ export class ListingsComponent implements OnInit {
     });
   }
 
-  toggleCat(cat: string): void
+  toggleCat(cat: string): void {
+    this.selectedCats.update(c => ({ ...c, [cat]: !c[cat] }));
+  }
+
+  clearFilters(): void {
+    this.search.set('');
+    this.selectedCats.set({});
+    this.minRating.set(0);
+    this.maxRate.set(3000);
+    this.verifiedOnly.set(false);
+  }
+
+  viewProvider(p: Listing): void {
+    this.listingService.select(p);
+    this.router.navigate(['/provider-profile']);
+  }
+
+  updateSearch(v: string):  void { this.search.set(v); }
+  updateMaxRate(v: number): void { this.maxRate.set(v); }
+  updateRating(v: number):  void { this.minRating.set(v); }
+  updateSort(v: string):    void { this.sortBy.set(v); }
+  toggleVerified():         void { this.verifiedOnly.update(v => !v); }
+}

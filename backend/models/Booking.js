@@ -1,39 +1,57 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
-  listing: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Listing',
-    required: true
+  
+  ref: {
+    type: String,
+    unique: true
   },
-  customer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-  provider: {
+  
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  scheduledDate: {
-    type: Date,
-    required: [true, 'Scheduled date is required']
+  
+  listingId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Listing'
   },
-  scheduledTime: { type: String },
-  address: { type: String, required: true },
-  notes: { type: String },
+  service:    { type: String, required: true },
+  provider:   { type: String, required: true },
+  providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+
+  
+  description: String,
+  address:     String,
+  city:        { type: String, default: 'Angeles City' },
+  duration:    String,
+  date:        { type: Date, required: true },
+  time:        String,
+  urgency:     String,
+  contactName: String,
+  phone:       String,
+  notes:       String,
+
+  amount: { type: Number, default: 0 },
+
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled'],
-    default: 'pending'
+    enum: ['Pending', 'Active', 'Completed', 'Cancelled'],
+    default: 'Pending'
   },
-  totalAmount: { type: Number, required: true },
-  paymentStatus: {
-    type: String,
-    enum: ['unpaid', 'paid', 'refunded'],
-    default: 'unpaid'
-  }
+
+  rated: { type: Boolean, default: false }
+
 }, { timestamps: true });
+
+
+bookingSchema.pre('save', async function (next) {
+  if (!this.ref) {
+    const num = Math.floor(Math.random() * 90000 + 10000);
+    this.ref = 'SK-' + num;
+  }
+  next();
+});
 
 module.exports = mongoose.model('Booking', bookingSchema);

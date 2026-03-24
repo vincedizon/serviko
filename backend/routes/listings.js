@@ -1,87 +1,92 @@
 const express = require('express');
-const router = express.Router();
+const router  = express.Router();
 const Listing = require('../models/Listing');
-const { protect, authorize } = require('../middleware/auth');
+const auth    = require('../middleware/auth');
 
-// GET /api/listings - Get all listings (public)
+// GET /api/listings — fetch all with optional filters
 router.get('/', async (req, res) => {
   try {
-    const { category, minPrice, maxPrice, location, search } = req.query;
-    let query = { isAvailable: true };
+    const { search, category, minRating, maxRate, verified, sortBy } = req.query;
 
-    if (category) query.category = category;
-    if (location) query.location = { $regex: location, $options: 'i' };
-    if (search) query.title = { $regex: search, $options: 'i' };
-    if (minPrice || maxPrice) {
-      query.price = {};
-      if (minPrice) query.price.$gte = Number(minPrice);
-      if (maxPrice) query.price.$lte = Number(maxPrice);
+    let query = {};
+
+    if (category)  query.service  = category;
+    if (verified === 'true') query.verified = true;
+    if (minRating) query.rating = { $gte: parseFloat(minRating) };
+    if (maxRate)   query.rate   = { ...query.rate, $lte: parseFloat(maxRate) };
+
+    if (search) {
+      query.$or = [
+        { name:    { $regex: search, $options: 'i' } },
+        { service: { $regex: search, $options: 'i' } },
+      ];
     }
 
-    const listings = await Listing.find(query)
-      .populate('provider', 'name avatar rating')
-      .sort({ createdAt: -1 });
+    let sort = {};
+    if (sortBy === 'rating') sort = { rating: -1 };
+    else if (sortBy === 'rate') sort = { rate: 1 };
+    else if (sortBy === 'name') sort = { name: 1 };
+    else sort = { rating: -1 }; // default
 
-    res.json({ success: true, count: listings.length, listings });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    const listings = await Listing.find(query).sort(sort);
+    res.json({ success: true, data: listings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
-// GET /api/listings/:id - Get single listing (public)
+// GET /api/listings/categories — get count per service category
+router.get('/categories', async (req, res) => {
+  try {
+    const counts = await Listing.aggregate([
+      { $group: { _id: '$service', count: { $sum: 1 } } },
+      { $sort:  { count: -1 } }
+    ]);
+    res.json({ success: true, data: counts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/listings/:id — single listing
 router.get('/:id', async (req, res) => {
-  try {
-    const listing = await Listing.findById(req.params.id)
-      .populate('provider', 'name avatar phone address');
-
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
-    res.json({ success: true, listing });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// POST /api/listings - Create listing (provider only)
-router.post('/', protect, authorize('provider', 'admin'), async (req, res) => {
-  try {
-    const listing = await Listing.create({ ...req.body, provider: req.user._id });
-    res.status(201).json({ success: true, listing });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// PUT /api/listings/:id - Update listing (owner or admin)
-router.put('/:id', protect, async (req, res) => {
-  try {
-    let listing = await Listing.findById(req.params.id);
-    if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
-
-    if (listing.provider.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    listing = await Listing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-    res.json({ success: true, listing });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// DELETE /api/listings/:id - Delete listing (owner or admin)
-router.delete('/:id', protect, async (req, res) => {
   try {
     const listing = await Listing.findById(req.params.id);
     if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
+    res.json({ success: true, data: listing });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
-    if (listing.provider.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
+// POST /api/listings — create listing (auth required)
+router.post('/', auth, async (req, res) => {
+  try {
+    const listing = await Listing.create({ ...req.body, userId: req.user.id });
+    res.status(201).json({ success: true, data: listing });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
 
-    await listing.deleteOne();
+// PUT /api/listings/:id — update listing (auth required)
+router.put('/:id', auth, async (req, res) => {
+  try {
+    const listing = await Listing.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
+    res.json({ success: true, data: listing });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/listings/:id — delete listing (auth required)
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    await Listing.findByIdAndDelete(req.params.id);
     res.json({ success: true, message: 'Listing deleted' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

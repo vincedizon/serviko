@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ListingService } from '../../core/services/listing.service';
+import { ListingService, Listing } from '../../core/services/listing.service';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 
 @Component({
@@ -56,4 +56,33 @@ export class HomeComponent implements OnInit {
     { num: '4', title: 'Rate & Review',     desc: 'After the job, rate your provider to help the community.' },
   ];
 
-  constructor(private router: Router, private listingService: Listing
+  constructor(private router: Router, private listingService: ListingService) {}
+
+  ngOnInit(): void {
+    this.loadCategoryCounts();
+  }
+
+  loadCategoryCounts(): void {
+    this.listingService.getCategoryCounts().subscribe({
+      next: (res) => {
+        // Map real counts from backend into the categories array
+        res.data.forEach(item => {
+          const match = this.serviceCategories.find(
+            c => c.name.toLowerCase() === item._id.toLowerCase()
+          );
+          if (match) match.count = item.count;
+        });
+      },
+      error: (err) => {
+        console.warn('Could not load category counts:', err);
+        // Silently fall back — categories still show with count 0
+      }
+    });
+  }
+
+  onSearch(): void {
+    this.router.navigate(['/listings'], { queryParams: { search: this.searchTerm } });
+  }
+
+  go(path: string): void { this.router.navigate([path]); }
+}
