@@ -1,105 +1,153 @@
 import { Component, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { AuthService } from '../../core/services/auth.service';
-import { BookingService } from '../../core/services/booking.service';
-import { trigger, transition, style, animate } from '@angular/animations';
+import { FormsModule } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-register',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './register.component.html',
-  styleUrls: ['./register.component.css'],
-  animations: [
-    trigger('fade', [
-      transition(':enter', [style({ opacity: 0 }), animate('400ms ease-out', style({ opacity: 1 }))])
-    ])
-  ]
+  styleUrls: ['./register.component.css']
 })
 export class RegisterComponent {
-  role            = signal<'client' | 'provider'>('client');
+
+  // Role
+  role = signal<'client' | 'provider'>('client');
+
+  // Shared fields
   firstName       = '';
   lastName        = '';
   email           = '';
-  phone           = '';
-  city            = '';
-  serviceType     = '';
   password        = '';
   confirmPassword = '';
   agree           = false;
-  loading         = signal(false);
-  idDisplayName   = '';
-  errorMsg        = signal('');
 
-  cities       = this.bookingService.cities;
-  serviceTypes = ['Electrician','Plumber','Carpenter','Painter','Aircon Technician','House Cleaner','Welder','Pest Control','Landscaper','Tiler'];
+  // Provider-only fields
+  serviceType   = '';
+  city          = '';
+  rate: number | null = null;       // ← NEW: hourly rate
+  idFile: File | null = null;
+  idDisplayName = '';
 
-  constructor(
-    private auth: AuthService,
-    private router: Router,
-    private bookingService: BookingService
-  ) {}
+  // UI state
+  loading  = signal(false);
+  errorMsg = signal<string | null>(null);
 
-  setRole(r: 'client' | 'provider'): void { this.role.set(r); }
+  // Must match Listing.js enum exactly
+  serviceTypes = [
+    'Electrician',
+    'Plumber',
+    'Carpenter',
+    'Painter',
+    'Aircon Technician',
+    'House Cleaner',
+    'Welder',
+    'Pest Control',
+    'Landscaping',
+    'Tiling',
+    'Masonry',
+    'Appliance Repair'
+  ];
+
+  cities = [
+    'Angeles City',
+    'Mabalacat',
+    'San Fernando',
+    'Clark',
+    'Porac',
+    'Magalang',
+    'Floridablanca',
+    'Guagua',
+    'Lubao',
+    'Sasmuan'
+  ];
+
+  constructor(private http: HttpClient, private router: Router) {}
+
+  setRole(r: 'client' | 'provider'): void {
+    this.role.set(r);
+    this.errorMsg.set(null);
+  }
 
   onFileChange(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
-      this.idDisplayName = input.files[0].name;
+      this.idFile = input.files[0];
+      this.idDisplayName = this.idFile.name;
     }
   }
 
   register(): void {
-   
-    if (!this.firstName || !this.email || !this.password) {
+    this.errorMsg.set(null);
+
+    if (!this.firstName || !this.lastName || !this.email || !this.password) {
       this.errorMsg.set('Please fill in all required fields.');
       return;
     }
+
     if (this.password !== this.confirmPassword) {
       this.errorMsg.set('Passwords do not match.');
       return;
     }
-    if (this.password.length < 6) {
-      this.errorMsg.set('Password must be at least 6 characters.');
-      return;
-    }
+
     if (!this.agree) {
       this.errorMsg.set('Please agree to the Terms of Service.');
       return;
     }
 
+    if (this.role() === 'provider' && !this.serviceType) {
+      this.errorMsg.set('Please select a service type.');
+      return;
+    }
+
+    if (this.role() === 'provider' && !this.city) {
+      this.errorMsg.set('Please select your city.');
+      return;
+    }
+
+    // ← NEW: validate rate for providers
+    if (this.role() === 'provider') {
+      if (!this.rate || this.rate < 100) {
+        this.errorMsg.set('Please enter a valid hourly rate (minimum ₱100).');
+        return;
+      }
+      if (this.rate > 10000) {
+        this.errorMsg.set('Hourly rate cannot exceed ₱10,000.');
+        return;
+      }
+    }
+
     this.loading.set(true);
-    this.errorMsg.set('');
 
-   
-    const roleMap: any = { client: 'customer', provider: 'provider' };
-
-    const payload = {
-      name: `${this.firstName} ${this.lastName}`.trim(),
-      email: this.email,
+    const payload: any = {
+      name:     `${this.firstName} ${this.lastName}`.trim(),
+      email:    this.email,
       password: this.password,
-      role: roleMap[this.role()],
-      phone: this.phone || undefined,
-      address: this.city || undefined
+      role:     this.role() === 'client' ? 'customer' : 'provider',
     };
 
-    this.auth.register(payload).subscribe({
-      next: (res) => {
+    if (this.role() === 'provider') {
+      payload.serviceType = this.serviceType;
+      payload.city        = this.city;
+      payload.rate        = this.rate;   // ← NEW: send rate to backend
+    }
+
+    this.http.post(`${environment.apiUrl}/auth/register`, payload).subscribe({
+      next: (res: any) => {
         this.loading.set(false);
-        // Redirect based on role
-        if (res.user.role === 'admin') {
-          this.router.navigate(['/admin']);
-        } else {
-          this.router.navigate(['/home']);
+        if (res.success) {
+          localStorage.setItem('token', res.token);
+          localStorage.setItem('user', JSON.stringify(res.user));
+          // Redirect providers to dashboard, customers to listings
+          this.router.navigate([res.user.role === 'provider' ? '/dashboard' : '/listings']);
         }
       },
       error: (err) => {
         this.loading.set(false);
-        this.errorMsg.set(
-          err.error?.message || 'Registration failed. Please try again.'
-        );
+        this.errorMsg.set(err?.error?.message ?? 'Registration failed. Please try again.');
       }
     });
   }

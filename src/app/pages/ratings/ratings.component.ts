@@ -49,40 +49,53 @@ export class RatingsComponent implements OnInit {
   constructor(private http: HttpClient) {}
 
   ngOnInit(): void {
-    this.http.get<any[]>('http://localhost:3000/api/ratings').subscribe({
-      next: (data) => {
-        // Map backend rating docs to display shape
-        const reviews: FullReview[] = data.map(r => ({
-          _id:             r._id,
-          client:          r.user?.name   ?? 'Anonymous',
-          date:            new Date(r.createdAt).toLocaleDateString('en-PH', { year:'numeric', month:'short', day:'numeric' }),
-          service:         r.listing?.category ?? r.listing?.title ?? 'Service',
-          provider:        r.listing?.providerName ?? 'Provider',
-          providerService: r.listing?.category ?? '',
-          rating:          r.rating,
-          text:            r.comment ?? '',
-        }));
+  this.http.get<any>('http://localhost:3000/api/ratings').subscribe({
+    next: (res) => {
+      // Check if your backend wraps data in a 'data' property or returns a direct array
+      const rawData = res.success ? res.data : res; 
+      
+      const reviews: FullReview[] = rawData.map((r: any) => ({
+        _id:             r._id,
+        client:          r.userName ?? 'Anonymous', 
+        date:            new Date(r.createdAt).toLocaleDateString('en-PH'),
+        service:         r.service ?? 'Service', // Matches the saved field
+        provider:        r.providerName ?? 'Provider', // Matches the saved field
+        providerService: r.service ?? '',
+        rating:          Number(r.rating),
+        text:            r.review ?? '',
+      }));
 
-        this.allReviews.set(reviews);
-        this.totalReviews.set(reviews.length);
+      this.allReviews.set(reviews);
+      this.totalReviews.set(reviews.length);
 
-        // Compute breakdown
-        if (reviews.length > 0) {
-          const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-          this.averageRating.set(avg.toFixed(1));
+      if (reviews.length > 0) {
+        // Calculate dynamic average
+        const sum = reviews.reduce((s, r) => s + r.rating, 0);
+        const avg = sum / reviews.length;
+        this.averageRating.set(avg.toFixed(1));
 
-          const bd = [5, 4, 3, 2, 1].map(stars => {
-            const count = reviews.filter(r => r.rating === stars).length;
-            return { stars, count, pct: Math.round((count / reviews.length) * 100) };
-          });
-          this.breakdown.set(bd);
-        }
+        // Update the progress bar breakdown
+        const bd = [5, 4, 3, 2, 1].map(stars => {
+          const count = reviews.filter(r => Math.round(r.rating) === stars).length;
+          return { 
+            stars, 
+            count, 
+            pct: Math.round((count / reviews.length) * 100) 
+          };
+        });
+        this.breakdown.set(bd);
+      } else {
+        this.averageRating.set('0.0');
+      }
 
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false)
-    });
-  }
+      this.loading.set(false);
+    },
+    error: (err) => {
+      console.error('Failed to load ratings:', err);
+      this.loading.set(false);
+    }
+  });
+}
 
   setFilter(f: number | null): void { this.rFilter.set(f); }
 }

@@ -8,10 +8,10 @@ import { BookingService } from '../../core/services/booking.service';
 import { environment } from '../../../environments/environment';
 
 export interface PaymentPayload {
-  bookingId: string;
-  method:    'gcash' | 'maya' | 'bank' | 'cash';
-  amount:    number;
-  reference?: string;
+  method:       'gcash' | 'maya' | 'bank' | 'cash';
+  amount:       number;
+  mobileNumber?: string | null;
+  bank?:         string | null;
 }
 
 @Component({
@@ -31,19 +31,19 @@ export interface PaymentPayload {
 })
 export class PaymentComponent implements OnInit {
 
-  // ── Signals — names match exactly what the HTML template uses ──────────────
+  // ── Signals ────────────────────────────────────────────────────────────────
   loading     = signal(false);
   errorMsg    = signal<string | null>(null);
   paymentDone = signal(false);
   payMethod   = signal<'gcash' | 'maya' | 'bank' | 'cash'>('gcash');
 
-  // ── Form fields ─────────────────────────────────────────────────────────────
+  // ── Form fields ────────────────────────────────────────────────────────────
   gcashNum     = '';
   mayaNum      = '';
   selectedBank = 'BDO';
   banks        = ['BDO', 'BPI', 'Metrobank', 'UnionBank', 'Landbank', 'PNB'];
 
-  // ── Receipt data ─────────────────────────────────────────────────────────────
+  // ── Receipt data ───────────────────────────────────────────────────────────
   bookingRef  = '';
   totalAmount = 0;
   paymentDate = new DatePipe('en-PH').transform(new Date(), 'MMMM d, y') ?? '';
@@ -54,50 +54,83 @@ export class PaymentComponent implements OnInit {
     private bookingService: BookingService
   ) {}
 
+  // ── Single ngOnInit ────────────────────────────────────────────────────────
   ngOnInit(): void {
-    // Guard: no confirmed booking → redirect to dashboard
-    if (!this.bookingService.confirmedId()) {
-      this.router.navigate(['/bookings']);
+    const intent = window.history.state;
+    if (!intent?.providerId) {
+      this.router.navigate(['/listings']);
       return;
     }
-    // Pre-fill receipt ref for display
-    this.bookingRef = this.bookingService.confirmedRef() ?? '';
+    this.totalAmount = intent.amount ?? 0;
   }
 
   setMethod(m: 'gcash' | 'maya' | 'bank' | 'cash'): void {
     this.payMethod.set(m);
   }
 
-  // Called by (click)="processPayment()" in the template
   processPayment(): void {
-    const id = this.bookingService.confirmedId();
+    const intent = window.history.state;
 
-    if (!id) {
-      this.errorMsg.set('No active booking found. Please start a new booking.');
+    if (!intent?.providerId) {
+      this.errorMsg.set('Missing booking info. Please go back and try again.');
+      return;
+    }
+
+    // Validation
+    if (this.payMethod() === 'gcash' && !this.gcashNum.trim()) {
+      this.errorMsg.set('Please enter your GCash number.');
+      return;
+    }
+    if (this.payMethod() === 'maya' && !this.mayaNum.trim()) {
+      this.errorMsg.set('Please enter your Maya number.');
       return;
     }
 
     this.loading.set(true);
     this.errorMsg.set(null);
 
-    const payload: PaymentPayload = {
-      bookingId: id,                  // ← THE FIX: was always undefined before
-      method:    this.payMethod(),
-      amount:    this.totalAmount,
+    const paymentPayload: PaymentPayload = {
+      method:       this.payMethod(),
+      amount:       intent.amount,
+      mobileNumber: this.payMethod() === 'gcash' ? this.gcashNum
+                  : this.payMethod() === 'maya'  ? this.mayaNum : null,
+      bank:         this.payMethod() === 'bank'  ? this.selectedBank : null
     };
 
-    this.http.post(`${environment.apiUrl}/api/payments`, payload).subscribe({
+    // Step 1: Process payment
+    this.http.post(`${environment.apiUrl}/payments`, paymentPayload).subscribe({
       next: () => {
-        this.loading.set(false);
-        this.paymentDone.set(true);
-        this.bookingService.clearConfirmedBooking();
-        // Auto-navigate after showing success screen
-        setTimeout(() => this.router.navigate(['/bookings']), 4000);
+
+        // Step 2: Create booking record
+        const bookingData = {
+          providerId:    intent.providerId,
+          service:       intent.serviceName,
+          provider:      intent.providerName,
+          date:          new Date(),
+          time:          '10:00 AM',
+          address:       'To be confirmed',
+          amount:        intent.amount,
+          paymentMethod: this.payMethod(),
+          status:        'Pending'
+        };
+
+        this.http.post(`${environment.apiUrl}/bookings`, bookingData).subscribe({
+          next: (bookRes: any) => {
+            this.bookingRef = bookRes.data?.ref ?? 'SK-XXXXX';
+            this.loading.set(false);
+            this.paymentDone.set(true);
+            setTimeout(() => this.router.navigate(['/bookings']), 4000);
+          },
+          error: () => {
+            this.loading.set(false);
+            this.errorMsg.set('Payment verified, but booking record failed. Contact support.');
+          }
+        });
       },
       error: (err) => {
         this.loading.set(false);
         this.errorMsg.set(err?.error?.message ?? 'Payment failed. Please try again.');
-      },
+      }
     });
   }
 

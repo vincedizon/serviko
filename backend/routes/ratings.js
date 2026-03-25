@@ -1,51 +1,61 @@
 const express = require('express');
 const router  = express.Router();
-const Booking = require('../models/Booking');
+const Rating  = require('../models/Rating');
 const Listing = require('../models/Listing');
 const { protect } = require('../middleware/auth');
 
-// POST /api/ratings — submit a rating after a completed booking
+// GET /api/ratings — Fetch all ratings
+router.get('/', async (req, res) => {
+  try {
+    const allRatings = await Rating.find().sort({ createdAt: -1 });
+    res.json({ success: true, data: allRatings });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/ratings/listing/:id — Fetch ratings for a specific listing
+router.get('/listing/:id', async (req, res) => {
+  try {
+    // ✅ Query Rating collection directly — not Booking
+    const reviews = await Rating.find({ listingId: req.params.id })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: reviews });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.post('/', protect, async (req, res) => {
   try {
-    const { bookingId, rating, review } = req.body;
+    const { bookingId, listingId, rating, review, providerName, service } = req.body;
 
-    if (!bookingId || !rating) {
-      return res.status(400).json({ success: false, message: 'bookingId and rating are required' });
-    }
-
-    // 1. Find the booking
-    const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
-
-    // Guard: only the owner of the booking can rate it
-    if (booking.userId.toString() !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
-    }
-
-    // Guard: prevent double-rating
-    if (booking.rated) {
-      return res.status(400).json({ success: false, message: 'Already rated' });
-    }
-
-    // 2. Mark booking as rated
-    booking.rated   = true;
-    booking.rating  = rating;
-    booking.review  = review || '';
-    await booking.save();
-
-    // 3. Recalculate the listing's average rating
-    const allRatedBookings = await Booking.find({
-      listingId: booking.listingId,
-      rated: true
-    }).select('rating');
-
-    const avg = allRatedBookings.reduce((sum, b) => sum + (b.rating || 0), 0) / allRatedBookings.length;
-
-    await Listing.findByIdAndUpdate(booking.listingId, {
-      rating: Math.round(avg * 10) / 10  // round to 1 decimal
+    // 1. Create the Rating with display fields for the Ratings Page
+    const newRating = await Rating.create({
+      bookingId,
+      listingId,
+      userId:       req.user._id,
+      userName:     req.user.name,
+      providerName: providerName, 
+      service:      service,      
+      rating:       Number(rating),
+      review:       review
     });
 
-    res.json({ success: true, message: 'Rating submitted successfully' });
+    // 2. Mark the specific booking as 'rated' so the UI button updates
+    const Booking = require('../models/Booking');
+    await Booking.findByIdAndUpdate(bookingId, { rated: true });
+
+    // 3. Update the Listing's average stars
+    const Listing = require('../models/Listing');
+    const allRatings = await Rating.find({ listingId });
+    if (allRatings.length > 0) {
+      const avg = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
+      await Listing.findByIdAndUpdate(listingId, { rating: avg });
+    }
+
+    res.status(201).json({ success: true, data: newRating });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

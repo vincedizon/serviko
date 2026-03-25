@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
@@ -10,44 +10,38 @@ export interface User {
   role: 'customer' | 'provider' | 'admin';
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({
+  providedIn: 'root'
+})
 export class AuthService {
   private baseUrl = 'http://localhost:3000/api/auth';
-
-  currentUser = signal<User | null>(this.loadUser());
+  
+  currentUser = signal<User | null>(this.getUserFromStorage());
+  
+  isLoggedIn = computed(() => !!this.currentUser());
+  isAdmin = computed(() => this.currentUser()?.role === 'admin');
+  userName = computed(() => this.currentUser()?.name || 'Guest'); // Fixes the NG9 Error
 
   constructor(private http: HttpClient, private router: Router) {}
-
-  private loadUser(): User | null {
-    const u = localStorage.getItem('user');
-    return u ? JSON.parse(u) : null;
-  }
-
-  login(email: string, password: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/login`, { email, password }).pipe(
-      tap((res: any) => {
-        localStorage.setItem('token', res.token);
-        localStorage.setItem('user', JSON.stringify(res.user));
-        this.currentUser.set(res.user);
-      })
+  // Change this line to accept one object instead of two arguments
+  login(credentials: any): Observable<any> {
+  return this.http.post<any>(`${this.baseUrl}/login`, credentials).pipe(
+    tap(res => this.setSession(res))
+  );
+  } 
+  // ✅ ADDED THIS BACK: Register method
+  register(userData: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/register`, userData).pipe(
+      tap(res => this.setSession(res))
     );
   }
 
-  register(data: {
-    name: string;
-    email: string;
-    password: string;
-    role: string;
-    phone?: string;
-    address?: string;
-  }): Observable<any> {
-    return this.http.post(`${this.baseUrl}/register`, data).pipe(
-      tap((res: any) => {
-        localStorage.setItem('token', res.token);
-        localStorage.setItem('user', JSON.stringify(res.user));
-        this.currentUser.set(res.user);
-      })
-    );
+  private setSession(res: any): void {
+    if (res.token) {
+      localStorage.setItem('token', res.token);
+      localStorage.setItem('user', JSON.stringify(res.user));
+      this.currentUser.set(res.user);
+    }
   }
 
   logout(): void {
@@ -57,23 +51,18 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  getToken(): string | null {
-    return localStorage.getItem('token');
+  checkAuthStatus(): boolean {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (token && user) {
+      if (!this.currentUser()) this.currentUser.set(JSON.parse(user));
+      return true;
+    }
+    return false;
   }
 
-  isLoggedIn(): boolean {
-    return !!this.getToken();
-  }
-
-  isAdmin(): boolean {
-    return this.currentUser()?.role === 'admin';
-  }
-
-  isProvider(): boolean {
-    return this.currentUser()?.role === 'provider';
-  }
-
-  userName(): string {
-    return this.currentUser()?.name ?? '';
+  private getUserFromStorage(): User | null {
+    const userJson = localStorage.getItem('user');
+    try { return userJson ? JSON.parse(userJson) : null; } catch { return null; }
   }
 }

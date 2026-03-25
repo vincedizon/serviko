@@ -2,7 +2,9 @@ import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { BookingService, Booking } from '../../core/services/booking.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-booking',
@@ -12,59 +14,64 @@ import { BookingService, Booking } from '../../core/services/booking.service';
   styleUrls: ['./booking.component.css']
 })
 export class BookingComponent implements OnInit {
-  // 1. Data Signals used by the HTML
   bookings = signal<Booking[]>([]);
   isLoading = signal(true);
   errorMsg = signal<string | null>(null);
   activeTab = signal('all');
 
-  // 2. Modal & Rating Signals
   showModal = signal(false);
   ratingTarget = signal<Booking | null>(null);
   tempRating = signal(0);
   ratingText = '';
   starsArray = [1, 2, 3, 4, 5];
+  statusOptions = ['Pending', 'Active', 'Completed', 'Cancelled'];
 
-  constructor(private bookingService: BookingService, private router: Router) {}
+  constructor(
+    private bookingService: BookingService,
+    private router: Router,
+    private http: HttpClient
+  ) {}
 
-  ngOnInit() {
-    this.loadBookings();
-  }
+  ngOnInit() { this.loadBookings(); }
 
-  // 3. Methods for loading and filtering data
   loadBookings() {
-  this.isLoading.set(true);
-  this.bookingService.getMyBookings().subscribe({
-    next: (res: any) => {
-      // res is { success: true, data: [...] }
-      this.bookings.set(res.data || []); 
-      this.isLoading.set(false);
-    },
-    error: (err) => {
-      this.errorMsg.set('Server connection failed.');
-      this.isLoading.set(false);
-    }
-  });
+    this.isLoading.set(true);
+    this.bookingService.getMyBookings().subscribe({
+      next: (res: any) => {
+        this.bookings.set(res.data || []);
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.errorMsg.set('Failed to load bookings.');
+        this.isLoading.set(false);
+      }
+    });
   }
 
-  // Computed signal for the dashboard stats section
-  dashStats = computed(() => [
-    { label: 'Total', val: this.bookings().length, sub: 'All time', color: 'var(--text)' },
-    { label: 'Active', val: this.bookings().filter(b => b.status === 'Active').length, sub: 'In progress', color: 'var(--accent)' },
-    { label: 'Pending', val: this.bookings().filter(b => b.status === 'Pending').length, sub: 'Awaiting', color: '#f59e0b' }
-  ]);
+  updateStatus(b: Booking, event: Event) {
+    const newStatus = (event.target as HTMLSelectElement).value;
+    this.http.patch(`${environment.apiUrl}/bookings/${b._id}/status`, { status: newStatus })
+      .subscribe({
+        next: () => this.loadBookings(),
+        error: (err) => alert('Update failed: ' + (err?.error?.message ?? 'Error'))
+      });
+  }
 
-  // Computed signal for the filtered table rows
+  dashStats = computed(() => {
+    const data = this.bookings();
+    return [
+      { label: 'Total', val: data.length, sub: 'All time', color: 'var(--text)' },
+      { label: 'Active', val: data.filter(b => b.status === 'Active').length, sub: 'In progress', color: 'var(--accent)' },
+      { label: 'Pending', val: data.filter(b => b.status === 'Pending').length, sub: 'Awaiting', color: '#f59e0b' }
+    ];
+  });
+
   filtered = computed(() => {
     const tab = this.activeTab();
-    if (tab === 'all') return this.bookings();
-    return this.bookings().filter(b => b.status.toLowerCase() === tab);
+    const data = this.bookings();
+    if (tab === 'all') return data;
+    return data.filter(b => b.status.toLowerCase() === tab.toLowerCase());
   });
-
-  // 4. Action Handlers
-  setTab(tab: string) { this.activeTab.set(tab); }
-
-  go(path: string) { this.router.navigate([path]); }
 
   statusBadge(status: string) {
     return {
@@ -75,7 +82,6 @@ export class BookingComponent implements OnInit {
     };
   }
 
-  // 5. Rating & Cancellation logic
   openRating(b: Booking) {
     this.ratingTarget.set(b);
     this.tempRating.set(0);
@@ -88,14 +94,21 @@ export class BookingComponent implements OnInit {
   submitRating() {
     const target = this.ratingTarget();
     if (target) {
-      this.bookingService.submitRating(target._id, this.tempRating(), this.ratingText).subscribe({
+      this.http.post(`${environment.apiUrl}/bookings/rate/${target._id}`, {
+        rating: this.tempRating(),
+        comment: this.ratingText
+      }).subscribe({
         next: () => {
           this.showModal.set(false);
           this.loadBookings();
-        }
+        },
+        error: () => alert('Failed to submit rating.')
       });
     }
   }
+
+  setTab(tab: string) { this.activeTab.set(tab); }
+  go(path: string) { this.router.navigate([path]); }
 
   cancelBooking(b: Booking) {
     if (confirm('Cancel this booking?')) {

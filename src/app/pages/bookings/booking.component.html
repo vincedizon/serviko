@@ -24,7 +24,12 @@
       <div class="dash-stat-sub">{{ s.sub }}</div>
     </div>
   </div>
-
+  <div class="dash-stat" *ngFor="let s of dashStats()">
+  <div class="dash-stat-label">{{ s.label }}</div>
+  <div class="dash-stat-val" [style.color]="s.color">
+    {{ s.val }}
+  </div>
+</div>
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab" [class.active]="activeTab()==='all'"       (click)="setTab('all')">All</div>
@@ -40,7 +45,7 @@
       <button class="btn btn-primary btn-sm" (click)="go('/listings')">+ New Booking</button>
     </div>
 
-    <!-- Loading skeleton rows -->
+    <!-- Loading skeleton -->
     <table class="data-table" *ngIf="isLoading()">
       <thead>
         <tr>
@@ -70,6 +75,7 @@
         </tr>
       </thead>
       <tbody>
+
         <!-- Empty state -->
         <tr *ngIf="filtered().length === 0">
           <td colspan="7" style="text-align:center;padding:2rem;color:var(--muted);">
@@ -77,21 +83,55 @@
             <a (click)="go('/listings')" style="color:var(--accent);cursor:pointer;margin-left:.25rem">Browse services →</a>
           </td>
         </tr>
+
         <!-- Booking rows -->
         <tr *ngFor="let b of filtered()">
-          <td style="...color:var(--accent)">#{{ b._id.slice(-6).toUpperCase() }}</td>
-          <td>{{ b.service }}</td>
-          <td>{{ b.provider }}</td>
+
+          <!-- Booking ID -->
+          <td style="color:var(--accent);font-weight:600">#{{ b._id.slice(-6).toUpperCase() }}</td>
+
+          <!-- Service & Provider -->
+          <td>{{ b.service || '—' }}</td>
+          <td>{{ b.provider || '—' }}</td>
+
+          <!-- Date -->
           <td>{{ b.date | date:'MMM d, y' }}</td>
-          <td style="font-weight:600">₱{{ b.amount }}</td>
-          <td><span class="badge" [ngClass]="statusBadge(b.status)">{{ b.status }}</span></td>
+
+          <!-- Amount — shows 0 if not saved, now fixed in backend -->
+          <td style="font-weight:600">₱{{ b.amount | number:'1.2-2' }}</td>
+
+          <!-- Status badge + dropdown to change status -->
           <td>
-            <button class="btn btn-sm btn-ghost"  *ngIf="b.status==='Completed' && !b.rated" (click)="openRating(b)">⭐ Rate</button>
-            <button class="btn btn-sm btn-danger" *ngIf="b.status==='Pending'" (click)="cancelBooking(b)">Cancel</button>
-            <span style="font-size:.8rem;color:var(--muted)" *ngIf="b.status==='Completed' && b.rated">Rated ✓</span>
-            <span style="font-size:.8rem;color:var(--muted)" *ngIf="b.status==='Active'">In Progress</span>
-            <span style="font-size:.8rem;color:var(--muted)" *ngIf="b.status==='Cancelled'">—</span>
+            <select
+              [value]="b.status"
+              (change)="updateStatus(b, $event)"
+              class="status-select"
+              [ngClass]="statusBadge(b.status)"
+              style="border:none;border-radius:12px;padding:2px 8px;font-size:.75rem;font-weight:600;cursor:pointer;">
+              <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+            </select>
           </td>
+
+          <!-- Actions -->
+          <td>
+          <button class="btn btn-sm btn-ghost"
+                  *ngIf="b.status === 'Completed' && !b.rated"
+                  (click)="openRating(b)">⭐ Rate</button>
+                  
+          <button class="btn btn-sm btn-danger"
+                  *ngIf="b.status === 'Pending'"
+                  (click)="cancelBooking(b)">Cancel</button>
+
+          <span style="font-size:.8rem;color:var(--muted)"
+                *ngIf="b.status === 'Completed' && b.rated">Rated ✓</span>
+                
+          <span style="font-size:.8rem;color:var(--muted)"
+                *ngIf="b.status === 'Active'">In Progress</span>
+                
+          <span style="font-size:.8rem;color:var(--muted)"
+                *ngIf="b.status === 'Cancelled'">—</span>
+        </td>
+
         </tr>
       </tbody>
     </table>

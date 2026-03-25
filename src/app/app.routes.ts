@@ -2,13 +2,14 @@ import { Routes } from '@angular/router';
 import { authGuard, adminGuard, guestGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
-  // Redirect root to login
+  // 1. Changed root redirect: If logged in, authGuard handles the rest
   {
     path: '',
-    redirectTo: 'login',
+    redirectTo: 'home', 
     pathMatch: 'full'
   },
-  // Public routes (no auth needed)
+  
+  // Public routes
   {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent),
@@ -19,7 +20,8 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent),
     canActivate: [guestGuard]
   },
-  // Protected routes (must be logged in)
+
+  // Protected routes
   {
     path: 'home',
     loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent),
@@ -36,12 +38,7 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'bookings',
-    loadComponent: () => import('./pages/bookings/booking.component').then(m => m.BookingComponent),
-    canActivate: [authGuard]
-  },
-  {
-    path: 'payment',
+    path: 'payment', // <--- Ensure your book() function uses this EXACT string
     loadComponent: () => import('./pages/payment/payment.component').then(m => m.PaymentComponent),
     canActivate: [authGuard]
   },
@@ -55,12 +52,14 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/ratings/ratings.component').then(m => m.RatingsComponent),
     canActivate: [authGuard]
   },
-  // Admin only
+
+  // Admin
   {
     path: 'admin',
     loadComponent: () => import('./pages/admin/admin.component').then(m => m.AdminComponent),
     canActivate: [authGuard, adminGuard]
   },
-  // Fallback - redirect unknown routes to login
-  { path: '**', redirectTo: 'login' }
+
+  // 2. Changed Fallback: Don't send logged-in users back to login
+  { path: '**', redirectTo: 'home' }
 ];

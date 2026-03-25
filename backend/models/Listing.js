@@ -22,6 +22,7 @@ const listingSchema = new mongoose.Schema({
   rate: {
     type: Number,
     required: [true, 'Hourly rate is required'],
+    default: 0,  
     min: 0
   },
   verified: {

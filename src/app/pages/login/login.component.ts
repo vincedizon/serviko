@@ -35,21 +35,16 @@ export class LoginComponent {
     this.loading.set(true);
     this.errorMsg.set('');
 
-    this.auth.login(this.email, this.password).subscribe({
+    this.auth.login({ email: this.email, password: this.password }).subscribe({
       next: (res) => {
-        this.loading.set(false);
-        // Redirect based on role
-        if (res.user.role === 'admin') {
-          this.router.navigate(['/admin']);
-        } else {
-          this.router.navigate(['/home']);
-        }
+        this.loading.set(false); // Set loading to false on success
+        console.log('Login successful');
+        this.router.navigate(['/home']);
       },
       error: (err) => {
-        this.loading.set(false);
-        this.errorMsg.set(
-          err.error?.message || 'Invalid email or password. Please try again.'
-        );
+        this.loading.set(false); // Set loading to false on error
+        // FIX: Use the correct variable name and the .set() method for signals
+        this.errorMsg.set('Invalid email or password');
       }
     });
   }

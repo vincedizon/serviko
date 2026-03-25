@@ -1,12 +1,13 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, Router, NavigationStart } from '@angular/router';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { FooterComponent } from './shared/components/footer/footer.component';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, FooterComponent],
+  imports: [CommonModule, RouterOutlet, NavbarComponent, FooterComponent],
   template: `
     <app-navbar></app-navbar>
     <main class="main-content">
@@ -15,19 +16,17 @@ import { FooterComponent } from './shared/components/footer/footer.component';
     <app-footer></app-footer>
   `,
   styles: [`
-    .main-content {
-      flex: 1;
-      animation: fadeIn .3s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    :host {
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-    }
+    .main-content { flex: 1; min-height: 80vh; }
+    :host { display: flex; flex-direction: column; min-height: 100vh; }
   `]
 })
-export class AppComponent {}
+export class AppComponent {
+  constructor(private router: Router) {
+    // This will tell us in the Console (F12) exactly where the app is going
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationStart) {
+        console.log('🚀 Route Change Detected:', event.url);
+      }
+    });
+  }
+}

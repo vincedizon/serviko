@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 // 1. DEFINE THE INTERFACE FIRST (Above the class)
 export interface Booking {
@@ -31,7 +32,7 @@ export interface Booking {
 // 2. NOW THE CLASS CAN USE THAT NAME
 @Injectable({ providedIn: 'root' })
 export class BookingService {
-  private baseUrl = 'http://localhost:3000/api/bookings';
+  private baseUrl = `${environment.apiUrl}/bookings`;
 
   confirmedId = signal<string | null>(null);
   confirmedRef = signal<string | null>(null);

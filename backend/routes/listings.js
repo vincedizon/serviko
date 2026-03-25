@@ -9,7 +9,6 @@ router.get('/', async (req, res) => {
     const { search, category, minRating, maxRate, verified, sortBy } = req.query;
     let query = {};
 
-    // FIX: Schema uses 'service', not 'category'
     if (category)            query.service = { $regex: new RegExp(category, 'i') };
     if (verified === 'true') query.verified = true;
     if (minRating)           query.rating   = { $gte: parseFloat(minRating) };
@@ -17,8 +16,8 @@ router.get('/', async (req, res) => {
 
     if (search) {
       query.$or = [
-        { name:        { $regex: search, $options: 'i' } }, // FIX: 'name' not 'providerName'
-        { service:     { $regex: search, $options: 'i' } }, // FIX: 'service' not 'category'
+        { name:        { $regex: search, $options: 'i' } },
+        { service:     { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { location:    { $regex: search, $options: 'i' } },
       ];
@@ -37,14 +36,25 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/listings/categories — count per category (for filter sidebar)
+// GET /api/listings/categories — count per category
 router.get('/categories', async (req, res) => {
   try {
     const counts = await Listing.aggregate([
-      { $group: { _id: '$service', count: { $sum: 1 } } }, // FIX: '$service' not '$category'
+      { $group: { _id: '$service', count: { $sum: 1 } } },
       { $sort:  { count: -1 } }
     ]);
     res.json({ success: true, data: counts });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/listings/mine — get the logged-in provider's own listing
+router.get('/mine', protect, async (req, res) => {
+  try {
+    const listing = await Listing.findOne({ userId: req.user._id });
+    if (!listing) return res.status(404).json({ success: false, message: 'No listing found for this provider' });
+    res.json({ success: true, data: listing });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -64,14 +74,49 @@ router.get('/:id', async (req, res) => {
 // POST /api/listings — create listing (requires login)
 router.post('/', protect, async (req, res) => {
   try {
-    const listing = await Listing.create({ ...req.body, userId: req.user.id });
+    const { rate, service, city, description } = req.body;
+
+    // ← UPDATED: validate that rate is provided and is a positive number
+    if (!rate || isNaN(rate) || Number(rate) < 100) {
+      return res.status(400).json({ success: false, message: 'A valid hourly rate (minimum ₱100) is required.' });
+    }
+
+    const listing = await Listing.create({
+      ...req.body,
+      userId: req.user.id,
+      rate:   Number(rate),   // ← ensure it's stored as a number
+    });
+
     res.status(201).json({ success: true, data: listing });
   } catch (err) {
     res.status(400).json({ success: false, message: err.message });
   }
 });
 
-// PATCH /api/listings/:id — partial update (admin: verify, suspend, update rating)
+// PATCH /api/listings/mine — provider updates their own listing (rate, description, location)
+router.patch('/mine', protect, async (req, res) => {
+  try {
+    const { rate, description, location } = req.body;
+
+    const updates = {};
+    if (rate        !== undefined) updates.rate        = Number(rate);
+    if (description !== undefined) updates.description = description;
+    if (location    !== undefined) updates.location    = location;
+
+    const listing = await Listing.findOneAndUpdate(
+      { userId: req.user._id },
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!listing) return res.status(404).json({ success: false, message: 'Listing not found' });
+    res.json({ success: true, data: listing });
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message });
+  }
+});
+
+// PATCH /api/listings/:id — admin update (verify, suspend, update rating)
 router.patch('/:id', protect, async (req, res) => {
   try {
     const listing = await Listing.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
