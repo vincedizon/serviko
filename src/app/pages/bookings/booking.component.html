@@ -14,7 +14,7 @@
   </div>
 
   <!-- Stats -->
-  <div class="dash-grid">
+  <div class="dash-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem;">
     <div class="dash-stat" *ngFor="let s of dashStats()">
       <div class="dash-stat-label">{{ s.label }}</div>
       <div class="dash-stat-val" [style.color]="s.color">
@@ -24,12 +24,7 @@
       <div class="dash-stat-sub">{{ s.sub }}</div>
     </div>
   </div>
-  <div class="dash-stat" *ngFor="let s of dashStats()">
-  <div class="dash-stat-label">{{ s.label }}</div>
-  <div class="dash-stat-val" [style.color]="s.color">
-    {{ s.val }}
-  </div>
-</div>
+
   <!-- Tabs -->
   <div class="tabs">
     <div class="tab" [class.active]="activeTab()==='all'"       (click)="setTab('all')">All</div>
@@ -85,7 +80,7 @@
         </tr>
 
         <!-- Booking rows -->
-        <tr *ngFor="let b of filtered()">
+        <tr *ngFor="let b of filtered(); trackBy: trackById">
 
           <!-- Booking ID -->
           <td style="color:var(--accent);font-weight:600">#{{ b._id.slice(-6).toUpperCase() }}</td>
@@ -103,8 +98,8 @@
           <!-- Status badge + dropdown to change status -->
           <td>
             <select
-              [value]="b.status"
-              (change)="updateStatus(b, $event)"
+              [ngModel]="b.status"
+              (ngModelChange)="updateStatusDirect(b, $event)"
               class="status-select"
               [ngClass]="statusBadge(b.status)"
               style="border:none;border-radius:12px;padding:2px 8px;font-size:.75rem;font-weight:600;cursor:pointer;">
@@ -117,17 +112,17 @@
           <button class="btn btn-sm btn-ghost"
                   *ngIf="b.status === 'Completed' && !b.rated"
                   (click)="openRating(b)">⭐ Rate</button>
-                  
+
           <button class="btn btn-sm btn-danger"
                   *ngIf="b.status === 'Pending'"
                   (click)="cancelBooking(b)">Cancel</button>
 
           <span style="font-size:.8rem;color:var(--muted)"
                 *ngIf="b.status === 'Completed' && b.rated">Rated ✓</span>
-                
+
           <span style="font-size:.8rem;color:var(--muted)"
                 *ngIf="b.status === 'Active'">In Progress</span>
-                
+
           <span style="font-size:.8rem;color:var(--muted)"
                 *ngIf="b.status === 'Cancelled'">—</span>
         </td>

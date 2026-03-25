@@ -50,10 +50,27 @@ export class BookingComponent implements OnInit {
 
   updateStatus(b: Booking, event: Event) {
     const newStatus = (event.target as HTMLSelectElement).value;
+    this.updateStatusDirect(b, newStatus);
+  }
+
+  updateStatusDirect(b: Booking, newStatus: string) {
+    const prevStatus = b.status;
+
+    // Optimistically update local signal so the dropdown + action buttons reflect change immediately
+    this.bookings.update(list =>
+      list.map(item => item._id === b._id ? { ...item, status: newStatus as Booking['status'] } : item)
+    );
+
     this.http.patch(`${environment.apiUrl}/bookings/${b._id}/status`, { status: newStatus })
       .subscribe({
         next: () => this.loadBookings(),
-        error: (err) => alert('Update failed: ' + (err?.error?.message ?? 'Error'))
+        error: (err) => {
+          // Revert on failure
+          this.bookings.update(list =>
+            list.map(item => item._id === b._id ? { ...item, status: prevStatus } : item)
+          );
+          alert('Update failed: ' + (err?.error?.message ?? 'Error'));
+        }
       });
   }
 
@@ -93,27 +110,56 @@ export class BookingComponent implements OnInit {
 
   submitRating() {
     const target = this.ratingTarget();
-    if (target) {
-      this.http.post(`${environment.apiUrl}/bookings/rate/${target._id}`, {
-        rating: this.tempRating(),
-        comment: this.ratingText
-      }).subscribe({
-        next: () => {
-          this.showModal.set(false);
-          this.loadBookings();
-        },
-        error: () => alert('Failed to submit rating.')
-      });
+    if (!target) return;
+
+    if (this.tempRating() === 0) {
+      alert('Please select a star rating before submitting.');
+      return;
     }
+
+    // POST to /api/ratings — creates the Rating document AND marks booking as rated
+    this.http.post(`${environment.apiUrl}/ratings`, {
+      bookingId:    target._id,
+      listingId:    (target as any).listingId,  // needed for listing avg update
+      providerName: target.provider,             // shown on ratings page
+      service:      target.service,              // shown on ratings page
+      rating:       this.tempRating(),
+      review:       this.ratingText
+    }).subscribe({
+      next: () => {
+        // Optimistically mark as rated in local signal so Rate button disappears immediately
+        this.bookings.update(list =>
+          list.map(item => item._id === target._id ? { ...item, rated: true } : item)
+        );
+        this.showModal.set(false);
+        this.loadBookings();
+        // Navigate to ratings page so it re-initialises with fresh data
+        this.router.navigate(['/ratings']);
+      },
+      error: (err) => alert('Failed to submit rating: ' + (err?.error?.message ?? 'Error'))
+    });
   }
 
   setTab(tab: string) { this.activeTab.set(tab); }
   go(path: string) { this.router.navigate([path]); }
+  trackById(_: number, b: Booking) { return b._id; }
 
   cancelBooking(b: Booking) {
     if (confirm('Cancel this booking?')) {
+      // Optimistically update so Cancel button disappears immediately
+      this.bookings.update(list =>
+        list.map(item => item._id === b._id ? { ...item, status: 'Cancelled' as Booking['status'] } : item)
+      );
+
       this.bookingService.cancelBooking(b._id).subscribe({
-        next: () => this.loadBookings()
+        next: () => this.loadBookings(),
+        error: () => {
+          // Revert on failure
+          this.bookings.update(list =>
+            list.map(item => item._id === b._id ? { ...item, status: 'Pending' as Booking['status'] } : item)
+          );
+          alert('Failed to cancel booking.');
+        }
       });
     }
   }

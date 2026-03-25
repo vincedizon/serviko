@@ -1,6 +1,7 @@
 import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule }  from '@angular/common';
 import { HttpClient }    from '@angular/common/http';
+import { environment }   from '../../../environments/environment';
 
 interface FullReview {
   _id:             string;
@@ -48,54 +49,49 @@ export class RatingsComponent implements OnInit {
 
   constructor(private http: HttpClient) {}
 
-  ngOnInit(): void {
-  this.http.get<any>('http://localhost:3000/api/ratings').subscribe({
-    next: (res) => {
-      // Check if your backend wraps data in a 'data' property or returns a direct array
-      const rawData = res.success ? res.data : res; 
-      
-      const reviews: FullReview[] = rawData.map((r: any) => ({
-        _id:             r._id,
-        client:          r.userName ?? 'Anonymous', 
-        date:            new Date(r.createdAt).toLocaleDateString('en-PH'),
-        service:         r.service ?? 'Service', // Matches the saved field
-        provider:        r.providerName ?? 'Provider', // Matches the saved field
-        providerService: r.service ?? '',
-        rating:          Number(r.rating),
-        text:            r.review ?? '',
-      }));
+  ngOnInit(): void { this.loadRatings(); }
 
-      this.allReviews.set(reviews);
-      this.totalReviews.set(reviews.length);
+  loadRatings(): void {
+    this.loading.set(true);
+    this.http.get<any>(`${environment.apiUrl}/ratings`).subscribe({
+      next: (res) => {
+        const rawData = res.success ? res.data : res;
 
-      if (reviews.length > 0) {
-        // Calculate dynamic average
-        const sum = reviews.reduce((s, r) => s + r.rating, 0);
-        const avg = sum / reviews.length;
-        this.averageRating.set(avg.toFixed(1));
+        const reviews: FullReview[] = rawData.map((r: any) => ({
+          _id:             r._id,
+          client:          r.userName ?? 'Anonymous',
+          date:            new Date(r.createdAt).toLocaleDateString('en-PH'),
+          service:         r.service ?? 'Service',
+          provider:        r.providerName ?? 'Provider',
+          providerService: r.service ?? '',
+          rating:          Number(r.rating),
+          text:            r.comment ?? r.review ?? '',
+        }));
 
-        // Update the progress bar breakdown
-        const bd = [5, 4, 3, 2, 1].map(stars => {
-          const count = reviews.filter(r => Math.round(r.rating) === stars).length;
-          return { 
-            stars, 
-            count, 
-            pct: Math.round((count / reviews.length) * 100) 
-          };
-        });
-        this.breakdown.set(bd);
-      } else {
-        this.averageRating.set('0.0');
+        this.allReviews.set(reviews);
+        this.totalReviews.set(reviews.length);
+
+        if (reviews.length > 0) {
+          const sum = reviews.reduce((s, r) => s + r.rating, 0);
+          this.averageRating.set((sum / reviews.length).toFixed(1));
+
+          const bd = [5, 4, 3, 2, 1].map(stars => {
+            const count = reviews.filter(r => Math.round(r.rating) === stars).length;
+            return { stars, count, pct: Math.round((count / reviews.length) * 100) };
+          });
+          this.breakdown.set(bd);
+        } else {
+          this.averageRating.set('0.0');
+        }
+
+        this.loading.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to load ratings:', err);
+        this.loading.set(false);
       }
-
-      this.loading.set(false);
-    },
-    error: (err) => {
-      console.error('Failed to load ratings:', err);
-      this.loading.set(false);
-    }
-  });
-}
+    });
+  }
 
   setFilter(f: number | null): void { this.rFilter.set(f); }
 }

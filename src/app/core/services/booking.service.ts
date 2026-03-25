@@ -50,7 +50,7 @@ export class BookingService {
   }
 
   cancelBooking(id: string): Observable<any> {
-    return this.http.patch(`${this.baseUrl}/cancel/${id}`, {});
+    return this.http.patch(`${this.baseUrl}/${id}/status`, { status: 'Cancelled' });
   }
 
   clearConfirmedBooking() {
